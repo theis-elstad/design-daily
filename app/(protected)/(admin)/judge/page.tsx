@@ -1,3 +1,5 @@
+export const runtime = 'edge'
+
 import { getSubmissionsForJudging, getJudgingStats } from '@/lib/actions/ratings'
 import { JudgingPanel } from '@/components/judge/judging-panel'
 import { DatePicker } from '@/components/judge/date-picker'

@@ -1,3 +1,5 @@
+export const runtime = 'edge'
+
 import { getAllUsers, getAllowedDomains } from '@/lib/actions/users'
 import { UsersTable } from '@/components/admin/users-table'
 import { AllowedDomainsManager } from '@/components/admin/allowed-domains-manager'

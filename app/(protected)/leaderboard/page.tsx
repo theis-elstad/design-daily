@@ -1,3 +1,5 @@
+export const runtime = 'edge'
+
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { LeaderboardTable } from '@/components/leaderboard/leaderboard-table'
