@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/actions/auth'
 import { Header } from '@/components/layout/header'
 
+export const runtime = 'edge'
+
 export default async function ProtectedLayout({
   children,
 }: {
