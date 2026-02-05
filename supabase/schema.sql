@@ -68,6 +68,21 @@ CREATE TABLE public.ratings (
 );
 
 -- ============================================
+-- ALLOWED DOMAINS TABLE (for signup restrictions)
+-- ============================================
+CREATE TABLE public.allowed_domains (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    domain TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Seed initial domains
+INSERT INTO public.allowed_domains (domain) VALUES
+    ('marketer.com'),
+    ('marketer.tech'),
+    ('vergence.tech');
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX idx_submissions_user_date ON public.submissions(user_id, submission_date);
@@ -75,6 +90,7 @@ CREATE INDEX idx_submissions_date ON public.submissions(submission_date DESC);
 CREATE INDEX idx_assets_submission ON public.assets(submission_id);
 CREATE INDEX idx_ratings_submission ON public.ratings(submission_id);
 CREATE INDEX idx_ratings_rated_by ON public.ratings(rated_by);
+CREATE INDEX idx_allowed_domains_domain ON public.allowed_domains(domain);
 
 -- ============================================
 -- LEADERBOARD FUNCTION
@@ -141,6 +157,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ratings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.allowed_domains ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: everyone can read, users can update own
 CREATE POLICY "profiles_select" ON public.profiles
@@ -193,3 +210,15 @@ CREATE POLICY "ratings_insert_admin" ON public.ratings
     );
 CREATE POLICY "ratings_update_admin" ON public.ratings
     FOR UPDATE USING (auth.uid() = rated_by);
+
+-- Allowed domains: everyone can read, only admins can modify
+CREATE POLICY "allowed_domains_select" ON public.allowed_domains
+    FOR SELECT USING (true);
+CREATE POLICY "allowed_domains_insert_admin" ON public.allowed_domains
+    FOR INSERT WITH CHECK (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+CREATE POLICY "allowed_domains_delete_admin" ON public.allowed_domains
+    FOR DELETE USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );

@@ -28,6 +28,22 @@ export async function signup(formData: FormData) {
   const password = formData.get('password') as string
   const fullName = formData.get('name') as string
 
+  // Check if email domain is allowed
+  const domain = email.split('@')[1]?.toLowerCase()
+  if (!domain) {
+    return { error: 'Invalid email address' }
+  }
+
+  const { data: allowedDomain } = await supabase
+    .from('allowed_domains')
+    .select('id')
+    .eq('domain', domain)
+    .single()
+
+  if (!allowedDomain) {
+    return { error: 'Email domain not authorized. Please contact your administrator.' }
+  }
+
   const { error } = await supabase.auth.signUp({
     email,
     password,

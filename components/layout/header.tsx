@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Upload, Trophy, Gavel, LayoutDashboard } from 'lucide-react'
+import { LogOut, Upload, Trophy, Gavel, LayoutDashboard, Users } from 'lucide-react'
 import { logout } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,6 +28,7 @@ const navItems = [
 const adminNavItems = [
   { href: '/judge', label: 'Judge', icon: Gavel },
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/users', label: 'Users', icon: Users },
 ]
 
 export function Header({ profile }: HeaderProps) {
