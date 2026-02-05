@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  transpilePackages: [
+    'radix-ui',
+    '@radix-ui/react-direction',
+    '@radix-ui/react-primitive',
+  ],
 };
 
 export default nextConfig;
