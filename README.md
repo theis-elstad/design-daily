@@ -1,36 +1,131 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Design Daily
 
-## Getting Started
+Internal web application for design team daily reporting and performance tracking.
 
-First, run the development server:
+## Features
+
+- **Designer Submission Portal** (`/submit`) - Upload daily design assets (images & videos) with drag & drop
+- **Leaderboard** (`/leaderboard`) - View designer rankings by performance scores
+- **Judging Panel** (`/judge`) - Admin-only anonymous rating of submissions (1-3 stars)
+- **Admin Dashboard** (`/admin`) - Overview of all submissions, ratings, and designer performance
+
+## Tech Stack
+
+- [Next.js 14](https://nextjs.org/) (App Router) with TypeScript
+- [Supabase](https://supabase.com/) for Auth, Postgres database, and Storage
+- [Tailwind CSS](https://tailwindcss.com/) with [shadcn/ui](https://ui.shadcn.com/) components
+- [Recharts](https://recharts.org/) for data visualization
+
+## Setup
+
+### 1. Clone and Install
+
+```bash
+git clone <repo-url>
+cd design-leaderboard
+npm install
+```
+
+### 2. Create Supabase Project
+
+1. Go to [supabase.com](https://supabase.com) and create a new project
+2. Wait for the project to be ready
+
+### 3. Set Up Database
+
+1. Go to the **SQL Editor** in your Supabase dashboard
+2. Run the SQL from `supabase/schema.sql` to create tables, functions, and policies
+
+### 4. Set Up Storage
+
+1. Go to **Storage** in your Supabase dashboard
+2. Create a new bucket called `submissions`
+3. Configure the bucket:
+   - **Public bucket**: No (keep private)
+   - **File size limit**: 50MB (to support videos)
+   - **Allowed MIME types**: `image/jpeg, image/png, image/webp, image/gif, video/mp4, video/webm, video/quicktime`
+4. Run the SQL from `supabase/storage.sql` to set up storage policies
+
+### 5. Configure Environment Variables
+
+1. Copy the example env file:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. Fill in your Supabase credentials (found in Project Settings > API):
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
+
+### 6. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 7. Create Admin User
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Sign up for an account through the app
+2. Go to Supabase **SQL Editor** and run:
+   ```sql
+   UPDATE public.profiles
+   SET role = 'admin'
+   WHERE email = 'your-admin@email.com';
+   ```
 
-## Learn More
+## Database Schema
 
-To learn more about Next.js, take a look at the following resources:
+| Table | Description |
+|-------|-------------|
+| `profiles` | User profiles (extends Supabase auth) with name and role (designer/admin) |
+| `submissions` | Daily submissions (one per user per day) |
+| `assets` | Media files (images & videos) for each submission |
+| `ratings` | Admin ratings (1-3 stars) for productivity, quality, convertability |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## User Roles
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Designer**: Can submit daily work, view leaderboard
+- **Admin**: All designer permissions + judge submissions + view admin dashboard
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+app/
+├── (auth)/              # Login, signup pages
+├── (protected)/         # Authenticated routes
+│   ├── submit/          # Designer submission portal
+│   ├── leaderboard/     # Rankings page
+│   └── (admin)/         # Admin-only routes
+│       ├── judge/       # Rating interface
+│       └── admin/       # Dashboard
+components/
+├── ui/                  # shadcn/ui components
+├── layout/              # Header, navigation
+├── submit/              # Submission form components
+├── judge/               # Rating components
+├── leaderboard/         # Leaderboard components
+└── admin/               # Dashboard components
+lib/
+├── supabase/            # Supabase client utilities
+├── actions/             # Server actions
+└── types/               # TypeScript types
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+### Vercel
+
+1. Push to GitHub
+2. Import project in [Vercel](https://vercel.com)
+3. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Deploy
+
+## License
+
+Internal use only.

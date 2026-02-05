@@ -1,0 +1,135 @@
+import { Suspense } from 'react'
+import { createClient } from '@/lib/supabase/server'
+import { LeaderboardTable } from '@/components/leaderboard/leaderboard-table'
+import { LeaderboardPodium } from '@/components/leaderboard/leaderboard-podium'
+import { TimeRangeToggle, type TimeRange } from '@/components/leaderboard/time-range-toggle'
+import { ViewToggle, type ViewMode } from '@/components/leaderboard/view-toggle'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { LeaderboardEntry } from '@/lib/types/database'
+
+interface LeaderboardPageProps {
+  searchParams: Promise<{ range?: TimeRange; view?: ViewMode }>
+}
+
+async function LeaderboardData({
+  range,
+  view,
+  isAdmin,
+}: {
+  range: TimeRange
+  view: ViewMode
+  isAdmin: boolean
+}) {
+  const supabase = await createClient()
+
+  // Get current period leaderboard
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: currentLeaderboard } = await (supabase.rpc as any)('get_leaderboard', {
+    time_range: range,
+  })
+
+  // Get previous period for trend calculation (only for longer ranges)
+  let previousLeaderboard = null
+  if (range === 'week' || range === 'month') {
+    const previousRange = range === 'week' ? 'month' : 'week'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase.rpc as any)('get_leaderboard', {
+      time_range: previousRange,
+    })
+    previousLeaderboard = data
+  }
+
+  // Type the raw data
+  type RawLeaderboardEntry = Omit<LeaderboardEntry, 'trend'>
+  const current: RawLeaderboardEntry[] = currentLeaderboard || []
+  const previous: RawLeaderboardEntry[] = previousLeaderboard || []
+
+  // Calculate trends by comparing ranks
+  const leaderboardWithTrends: LeaderboardEntry[] = current.map((entry) => {
+    const previousEntry = previous.find((p) => p.user_id === entry.user_id)
+
+    let trend: 'up' | 'down' | 'same' = 'same'
+    if (previousEntry) {
+      if (entry.rank < previousEntry.rank) trend = 'up'
+      else if (entry.rank > previousEntry.rank) trend = 'down'
+    }
+
+    return { ...entry, trend }
+  })
+
+  // Non-admins only see podium view
+  if (!isAdmin || view === 'podium') {
+    return <LeaderboardPodium entries={leaderboardWithTrends} isAdmin={isAdmin} />
+  }
+
+  return <LeaderboardTable entries={leaderboardWithTrends} />
+}
+
+function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-9 w-9 rounded-full" />
+          <div className="flex-1">
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
+  const params = await searchParams
+  const range = params.range || 'week'
+  const view = params.view || 'podium'
+
+  // Check if user is admin
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let isAdmin = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const typedProfile = profile as { role: string } | null
+    isAdmin = typedProfile?.role === 'admin'
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Leaderboard</h1>
+            <p className="text-gray-600 mt-1">
+              See how designers rank based on their submissions
+            </p>
+          </div>
+          <TimeRangeToggle currentRange={range} />
+        </div>
+
+        {isAdmin && (
+          <div className="flex justify-end">
+            <ViewToggle currentView={view} />
+          </div>
+        )}
+      </div>
+
+      <Suspense fallback={<LeaderboardSkeleton />}>
+        <LeaderboardData range={range} view={view} isAdmin={isAdmin} />
+      </Suspense>
+    </div>
+  )
+}

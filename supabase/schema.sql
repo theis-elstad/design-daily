@@ -1,0 +1,195 @@
+-- Design Daily Database Schema
+-- Run this SQL in your Supabase SQL Editor
+
+-- ============================================
+-- PROFILES TABLE (extends auth.users)
+-- ============================================
+CREATE TABLE public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    full_name TEXT,
+    role TEXT NOT NULL DEFAULT 'designer' CHECK (role IN ('designer', 'admin')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Auto-create profile on user signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.profiles (id, email, full_name)
+    VALUES (
+        NEW.id,
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1))
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================
+-- SUBMISSIONS TABLE (one per user per day)
+-- ============================================
+CREATE TABLE public.submissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    submission_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_daily_submission UNIQUE (user_id, submission_date)
+);
+
+-- ============================================
+-- ASSETS TABLE (images for each submission)
+-- ============================================
+CREATE TABLE public.assets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id UUID NOT NULL REFERENCES public.submissions(id) ON DELETE CASCADE,
+    storage_path TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_size INTEGER,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================
+-- RATINGS TABLE (1-3 stars on 3 dimensions)
+-- ============================================
+CREATE TABLE public.ratings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id UUID NOT NULL REFERENCES public.submissions(id) ON DELETE CASCADE,
+    rated_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    productivity INTEGER NOT NULL CHECK (productivity BETWEEN 1 AND 3),
+    quality INTEGER NOT NULL CHECK (quality BETWEEN 1 AND 3),
+    convertability INTEGER NOT NULL CHECK (convertability BETWEEN 1 AND 3),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_rating UNIQUE (submission_id, rated_by)
+);
+
+-- ============================================
+-- INDEXES
+-- ============================================
+CREATE INDEX idx_submissions_user_date ON public.submissions(user_id, submission_date);
+CREATE INDEX idx_submissions_date ON public.submissions(submission_date DESC);
+CREATE INDEX idx_assets_submission ON public.assets(submission_id);
+CREATE INDEX idx_ratings_submission ON public.ratings(submission_id);
+CREATE INDEX idx_ratings_rated_by ON public.ratings(rated_by);
+
+-- ============================================
+-- LEADERBOARD FUNCTION
+-- Supports time_range: 'today', 'yesterday', 'week', 'month', 'all'
+-- ============================================
+CREATE OR REPLACE FUNCTION public.get_leaderboard(time_range TEXT DEFAULT 'all')
+RETURNS TABLE (
+    user_id UUID,
+    full_name TEXT,
+    total_submissions BIGINT,
+    avg_total_score NUMERIC,
+    avg_productivity NUMERIC,
+    avg_quality NUMERIC,
+    avg_convertability NUMERIC,
+    rank BIGINT
+) AS $$
+DECLARE
+    start_date DATE;
+    end_date DATE;
+BEGIN
+    -- Calculate date range based on time_range parameter
+    CASE time_range
+        WHEN 'today' THEN
+            start_date := CURRENT_DATE;
+            end_date := CURRENT_DATE;
+        WHEN 'yesterday' THEN
+            start_date := CURRENT_DATE - INTERVAL '1 day';
+            end_date := CURRENT_DATE - INTERVAL '1 day';
+        WHEN 'week' THEN
+            start_date := CURRENT_DATE - INTERVAL '7 days';
+            end_date := CURRENT_DATE;
+        WHEN 'month' THEN
+            start_date := CURRENT_DATE - INTERVAL '30 days';
+            end_date := CURRENT_DATE;
+        ELSE
+            start_date := '1970-01-01'::DATE;
+            end_date := CURRENT_DATE;
+    END CASE;
+
+    RETURN QUERY
+    SELECT
+        p.id,
+        p.full_name,
+        COUNT(DISTINCT s.id)::BIGINT,
+        ROUND(COALESCE(AVG(r.productivity + r.quality + r.convertability), 0), 2),
+        ROUND(COALESCE(AVG(r.productivity), 0), 2),
+        ROUND(COALESCE(AVG(r.quality), 0), 2),
+        ROUND(COALESCE(AVG(r.convertability), 0), 2),
+        DENSE_RANK() OVER (ORDER BY COALESCE(AVG(r.productivity + r.quality + r.convertability), 0) DESC)::BIGINT
+    FROM public.profiles p
+    LEFT JOIN public.submissions s ON s.user_id = p.id AND s.submission_date >= start_date AND s.submission_date <= end_date
+    LEFT JOIN public.ratings r ON r.submission_id = s.id
+    WHERE p.role = 'designer'
+    GROUP BY p.id, p.full_name
+    HAVING COUNT(DISTINCT s.id) > 0
+    ORDER BY avg_total_score DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- ROW LEVEL SECURITY
+-- ============================================
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.assets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ratings ENABLE ROW LEVEL SECURITY;
+
+-- Profiles: everyone can read, users can update own
+CREATE POLICY "profiles_select" ON public.profiles
+    FOR SELECT USING (true);
+CREATE POLICY "profiles_update_own" ON public.profiles
+    FOR UPDATE USING (auth.uid() = id);
+
+-- Submissions: own + admin can see all
+CREATE POLICY "submissions_select_own" ON public.submissions
+    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "submissions_select_admin" ON public.submissions
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+CREATE POLICY "submissions_insert_own" ON public.submissions
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Assets: own + admin
+CREATE POLICY "assets_select_own" ON public.assets
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM public.submissions WHERE id = submission_id AND user_id = auth.uid())
+    );
+CREATE POLICY "assets_select_admin" ON public.assets
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+CREATE POLICY "assets_insert_own" ON public.assets
+    FOR INSERT WITH CHECK (
+        EXISTS (SELECT 1 FROM public.submissions WHERE id = submission_id AND user_id = auth.uid())
+    );
+CREATE POLICY "assets_delete_own" ON public.assets
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM public.submissions
+            WHERE id = submission_id
+            AND user_id = auth.uid()
+            AND submission_date = CURRENT_DATE
+        )
+    );
+
+-- Ratings: admin only
+CREATE POLICY "ratings_select_admin" ON public.ratings
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+CREATE POLICY "ratings_insert_admin" ON public.ratings
+    FOR INSERT WITH CHECK (
+        auth.uid() = rated_by
+        AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+CREATE POLICY "ratings_update_admin" ON public.ratings
+    FOR UPDATE USING (auth.uid() = rated_by);
