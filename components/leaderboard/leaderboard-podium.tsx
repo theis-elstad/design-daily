@@ -2,9 +2,9 @@
 
 import { useRef } from 'react'
 import { Trophy, Download } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, getAvatarUrl } from '@/lib/utils'
 import type { LeaderboardEntry } from '@/lib/types/database'
 
 interface LeaderboardPodiumProps {
@@ -70,18 +70,24 @@ function PodiumPlace({
     <div className="flex flex-col items-center">
       {/* Names and avatars */}
       <div className="flex flex-wrap justify-center gap-2 mb-3 max-w-[200px]">
-        {entries.map((entry) => (
-          <div key={entry.user_id} className="flex flex-col items-center">
-            <Avatar className={cn('h-12 w-12 sm:h-16 sm:w-16 border-4', medalColor)}>
-              <AvatarFallback className={cn(avatarBg, avatarText, 'text-lg sm:text-xl font-bold')}>
-                {getInitials(entry.full_name)}
-              </AvatarFallback>
-            </Avatar>
-            <p className="mt-1 text-xs sm:text-sm font-medium text-center max-w-[80px] truncate">
-              {entry.full_name?.split(' ')[0] || 'Unknown'}
-            </p>
-          </div>
-        ))}
+        {entries.map((entry) => {
+          const avatarUrl = getAvatarUrl(entry.avatar_path)
+          return (
+            <div key={entry.user_id} className="flex flex-col items-center">
+              <Avatar className={cn('h-12 w-12 sm:h-16 sm:w-16 border-4', medalColor)}>
+                {avatarUrl && (
+                  <AvatarImage src={avatarUrl} alt={entry.full_name || 'Avatar'} />
+                )}
+                <AvatarFallback className={cn(avatarBg, avatarText, 'text-lg sm:text-xl font-bold')}>
+                  {getInitials(entry.full_name)}
+                </AvatarFallback>
+              </Avatar>
+              <p className="mt-1 text-xs sm:text-sm font-medium text-center max-w-[80px] truncate">
+                {entry.full_name?.split(' ')[0] || 'Unknown'}
+              </p>
+            </div>
+          )
+        })}
       </div>
 
       {/* Score */}
@@ -199,7 +205,7 @@ export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) 
         {/* Show message if there are ties */}
         {(firstPlace.length > 1 || secondPlace.length > 1 || thirdPlace.length > 1) && (
           <p className="text-center text-sm text-gray-500 mt-6">
-            🏆 Tied designers share the podium position
+            Tied designers share the podium position
           </p>
         )}
       </div>

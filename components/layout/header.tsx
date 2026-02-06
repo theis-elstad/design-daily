@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Upload, Trophy, Gavel, LayoutDashboard, Users } from 'lucide-react'
+import { LogOut, Upload, Trophy, Gavel, LayoutDashboard, Users, Camera } from 'lucide-react'
 import { logout } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,9 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { AvatarUpload } from '@/components/profile/avatar-upload'
 import type { Profile } from '@/lib/types/database'
-import { cn } from '@/lib/utils'
+import { cn, getAvatarUrl } from '@/lib/utils'
 
 interface HeaderProps {
   profile: Profile
@@ -43,6 +44,8 @@ export function Header({ profile }: HeaderProps) {
         .join('')
         .toUpperCase()
     : profile.email[0].toUpperCase()
+
+  const avatarUrl = getAvatarUrl(profile.avatar_path)
 
   return (
     <header className="border-b bg-white">
@@ -79,6 +82,7 @@ export function Header({ profile }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt={profile.full_name || 'Avatar'} />}
                   <AvatarFallback className="bg-gray-200">
                     {initials}
                   </AvatarFallback>
@@ -91,6 +95,13 @@ export function Header({ profile }: HeaderProps) {
                 <p className="text-xs text-gray-500">{profile.email}</p>
                 <p className="text-xs text-gray-400 capitalize">{profile.role}</p>
               </div>
+              <DropdownMenuSeparator />
+              <AvatarUpload userId={profile.id} currentAvatarUrl={avatarUrl}>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+                  <Camera className="mr-2 h-4 w-4" />
+                  <span>Change picture</span>
+                </DropdownMenuItem>
+              </AvatarUpload>
               <DropdownMenuSeparator />
               <div className="md:hidden">
                 {allNavItems.map((item) => {

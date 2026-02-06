@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { toast } from 'sonner'
 import { CheckCircle } from 'lucide-react'
 import { ImageDropzone } from './image-dropzone'
@@ -13,20 +13,30 @@ interface SubmissionFormProps {
   userId: string
   hasSubmitted: boolean
   existingAssets: Asset[]
+  selectedDate: string
 }
 
 export function SubmissionForm({
   userId,
   hasSubmitted: initialHasSubmitted,
-  existingAssets,
+  existingAssets: initialExistingAssets,
+  selectedDate,
 }: SubmissionFormProps) {
   const [hasSubmitted, setHasSubmitted] = useState(initialHasSubmitted)
+  const [existingAssets, setExistingAssets] = useState(initialExistingAssets)
   const [isPending, startTransition] = useTransition()
   const [showSuccess, setShowSuccess] = useState(false)
 
+  // Reset state when date changes
+  useEffect(() => {
+    setHasSubmitted(initialHasSubmitted)
+    setExistingAssets(initialExistingAssets)
+    setShowSuccess(false)
+  }, [selectedDate, initialHasSubmitted, initialExistingAssets])
+
   const handleUploadComplete = (paths: string[]) => {
     startTransition(async () => {
-      const result = await createSubmission(paths)
+      const result = await createSubmission(paths, selectedDate)
       if (result.error) {
         toast.error(result.error)
       } else {
@@ -38,12 +48,20 @@ export function SubmissionForm({
     })
   }
 
+  const isToday = selectedDate === new Date().toISOString().split('T')[0]
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Submit Your Work</CardTitle>
         <CardDescription>
-          Upload your design assets for today. You can add more files throughout the day.
+          {isToday
+            ? 'Upload your design assets for today. You can add more files throughout the day.'
+            : `Upload design assets for ${new Date(selectedDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              })}.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -66,7 +84,9 @@ export function SubmissionForm({
 
         {hasSubmitted && (
           <p className="text-sm text-gray-500 text-center">
-            You&apos;ve already submitted today. You can still add more assets above.
+            {isToday
+              ? "You've already submitted today. You can still add more assets above."
+              : 'You have existing submissions for this date. You can add more assets above.'}
           </p>
         )}
       </CardContent>

@@ -41,12 +41,23 @@ async function LeaderboardData({
     previousLeaderboard = data
   }
 
+  // Fetch avatar paths for all users in the leaderboard
+  const userIds = (currentLeaderboard || []).map((e: { user_id: string }) => e.user_id)
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, avatar_path')
+    .in('id', userIds)
+
+  const avatarMap = new Map(
+    (profiles || []).map((p: { id: string; avatar_path: string | null }) => [p.id, p.avatar_path])
+  )
+
   // Type the raw data
-  type RawLeaderboardEntry = Omit<LeaderboardEntry, 'trend'>
+  type RawLeaderboardEntry = Omit<LeaderboardEntry, 'trend' | 'avatar_path'>
   const current: RawLeaderboardEntry[] = currentLeaderboard || []
   const previous: RawLeaderboardEntry[] = previousLeaderboard || []
 
-  // Calculate trends by comparing ranks
+  // Calculate trends by comparing ranks and add avatar paths
   const leaderboardWithTrends: LeaderboardEntry[] = current.map((entry) => {
     const previousEntry = previous.find((p) => p.user_id === entry.user_id)
 
@@ -56,7 +67,7 @@ async function LeaderboardData({
       else if (entry.rank > previousEntry.rank) trend = 'down'
     }
 
-    return { ...entry, trend }
+    return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null }
   })
 
   // Non-admins only see podium view

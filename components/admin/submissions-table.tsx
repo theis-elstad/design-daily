@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
-import { ChevronDown, ChevronUp, Image } from 'lucide-react'
+import { ChevronDown, ChevronUp, Image, Video } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -31,6 +31,8 @@ interface Submission {
     email: string
   }
   assetCount: number
+  imageCount: number
+  videoCount: number
   ratingCount: number
   avgProductivity: number | null
   avgQuality: number | null
@@ -189,10 +191,18 @@ export function SubmissionsTable({
                       {sub.profiles.full_name || sub.profiles.email}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="secondary" className="gap-1">
-                        <Image className="h-3 w-3" />
-                        {sub.assetCount}
-                      </Badge>
+                      <div className="flex items-center justify-center gap-1">
+                        <Badge variant="secondary" className="gap-1">
+                          <Image className="h-3 w-3" />
+                          {sub.imageCount}
+                        </Badge>
+                        {sub.videoCount > 0 && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Video className="h-3 w-3" />
+                            {sub.videoCount}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell
                       className={cn(

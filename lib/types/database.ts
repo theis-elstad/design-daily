@@ -15,6 +15,7 @@ export type Database = {
           email: string
           full_name: string | null
           role: 'designer' | 'admin'
+          avatar_path: string | null
           created_at: string
         }
         Insert: {
@@ -22,6 +23,7 @@ export type Database = {
           email: string
           full_name?: string | null
           role?: 'designer' | 'admin'
+          avatar_path?: string | null
           created_at?: string
         }
         Update: {
@@ -29,6 +31,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           role?: 'designer' | 'admin'
+          avatar_path?: string | null
           created_at?: string
         }
       }
@@ -59,6 +62,7 @@ export type Database = {
           storage_path: string
           file_name: string
           file_size: number | null
+          asset_type: 'image' | 'video'
           created_at: string
         }
         Insert: {
@@ -67,6 +71,7 @@ export type Database = {
           storage_path: string
           file_name: string
           file_size?: number | null
+          asset_type?: 'image' | 'video'
           created_at?: string
         }
         Update: {
@@ -75,6 +80,7 @@ export type Database = {
           storage_path?: string
           file_name?: string
           file_size?: number | null
+          asset_type?: 'image' | 'video'
           created_at?: string
         }
       }
@@ -152,6 +158,7 @@ export type SubmissionWithDetails = Submission & {
 export type LeaderboardEntry = {
   user_id: string
   full_name: string | null
+  avatar_path?: string | null
   total_submissions: number
   avg_total_score: number
   avg_productivity: number

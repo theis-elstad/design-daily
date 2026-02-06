@@ -70,7 +70,7 @@ export async function getAllSubmissions(filters: {
       `
       *,
       profiles!inner (full_name, email),
-      assets (id, storage_path, file_name),
+      assets (id, storage_path, file_name, asset_type),
       ratings (
         productivity,
         quality,
@@ -101,7 +101,7 @@ export async function getAllSubmissions(filters: {
     submission_date: string
     created_at: string
     profiles: { full_name: string | null; email: string }
-    assets: { id: string; storage_path: string; file_name: string }[]
+    assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
     ratings: { productivity: number; quality: number; convertability: number; profiles: { full_name: string | null } }[]
   }
 
@@ -126,13 +126,19 @@ export async function getAllSubmissions(filters: {
         ? avgProductivity + avgQuality + avgConvertability
         : null
 
+    const assets = sub.assets || []
+    const imageCount = assets.filter((a) => a.asset_type === 'image').length
+    const videoCount = assets.filter((a) => a.asset_type === 'video').length
+
     return {
       ...sub,
       avgProductivity,
       avgQuality,
       avgConvertability,
       avgTotal,
-      assetCount: sub.assets?.length || 0,
+      assetCount: assets.length,
+      imageCount,
+      videoCount,
       ratingCount: ratings.length,
     }
   })
@@ -220,4 +226,110 @@ export async function getDesignerStats() {
           : null,
     }
   })
+}
+
+export type TimeRange = 'today' | 'yesterday' | 'week' | 'month'
+
+function getDateRangeForTimeRange(timeRange: TimeRange): { startDate: string; endDate: string } {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const endDate = today.toISOString().split('T')[0]
+
+  let startDate: string
+
+  switch (timeRange) {
+    case 'today':
+      startDate = endDate
+      break
+    case 'yesterday': {
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      startDate = yesterday.toISOString().split('T')[0]
+      break
+    }
+    case 'week': {
+      const weekAgo = new Date(today)
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      startDate = weekAgo.toISOString().split('T')[0]
+      break
+    }
+    case 'month': {
+      const monthAgo = new Date(today)
+      monthAgo.setDate(monthAgo.getDate() - 30)
+      startDate = monthAgo.toISOString().split('T')[0]
+      break
+    }
+    default:
+      startDate = endDate
+  }
+
+  return { startDate, endDate }
+}
+
+export async function getDesignerProductivityData(timeRange: TimeRange) {
+  const supabase = await createClient()
+  const { startDate, endDate } = getDateRangeForTimeRange(timeRange)
+
+  // Get all submissions with designer info in the date range
+  const { data } = await supabase
+    .from('submissions')
+    .select(
+      `
+      submission_date,
+      user_id,
+      profiles!inner (full_name),
+      assets (id)
+    `
+    )
+    .gte('submission_date', startDate)
+    .lte('submission_date', endDate)
+    .order('submission_date')
+
+  type SubmissionRow = {
+    submission_date: string
+    user_id: string
+    profiles: { full_name: string | null }
+    assets: { id: string }[]
+  }
+
+  const submissions = (data || []) as SubmissionRow[]
+
+  // Get unique designers
+  const designerMap = new Map<string, string>()
+  submissions.forEach((sub) => {
+    const name = sub.profiles.full_name || 'Unknown'
+    designerMap.set(sub.user_id, name)
+  })
+  const designers = Array.from(designerMap.entries()).map(([id, name]) => ({ id, name }))
+
+  // Group by date and designer
+  const dataByDate = new Map<string, Record<string, number>>()
+
+  submissions.forEach((sub) => {
+    const date = sub.submission_date
+    const designerName = sub.profiles.full_name || 'Unknown'
+    const assetCount = sub.assets?.length || 0
+
+    if (!dataByDate.has(date)) {
+      dataByDate.set(date, {})
+    }
+    const dateData = dataByDate.get(date)!
+    dateData[designerName] = (dateData[designerName] || 0) + assetCount
+  })
+
+  // Convert to array format for recharts
+  const chartData = Array.from(dataByDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, designerData]) => ({
+      date,
+      ...designerData,
+    }))
+
+  return {
+    chartData,
+    designers,
+    timeRange,
+    startDate,
+    endDate,
+  }
 }

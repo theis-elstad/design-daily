@@ -139,3 +139,28 @@ export async function isEmailDomainAllowed(email: string): Promise<boolean> {
 
   return true
 }
+
+export async function updateProfileAvatar(avatarPath: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('profiles') as any)
+    .update({ avatar_path: avatarPath })
+    .eq('id', user.id)
+
+  if (error) {
+    console.error('Error updating avatar:', error)
+    return { success: false, error: error.message }
+  }
+
+  // Revalidate all pages that might show the avatar
+  revalidatePath('/', 'layout')
+  return { success: true }
+}

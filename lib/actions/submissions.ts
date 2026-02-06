@@ -2,39 +2,69 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { isVideoFile } from '@/lib/utils'
 
-export async function checkTodaySubmission() {
+// Helper to get server's current date (UTC)
+function getServerDate(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+// Helper to validate a date is within allowed range (up to 7 days ago)
+function isDateInRange(dateStr: string): boolean {
+  const date = new Date(dateStr)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  date.setHours(0, 0, 0, 0)
+
+  const diffDays = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+  return diffDays >= 0 && diffDays <= 7
+}
+
+export async function checkSubmission(targetDate?: string) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) return { hasSubmitted: false, submissionId: null }
+  if (!user) return { hasSubmitted: false, submissionId: null, currentDate: getServerDate() }
 
-  const today = new Date().toISOString().split('T')[0]
+  // Use provided date or server's current date
+  const date = targetDate || getServerDate()
 
   const { data } = await supabase
     .from('submissions')
     .select('id, assets(*)')
     .eq('user_id', user.id)
-    .eq('submission_date', today)
+    .eq('submission_date', date)
     .single()
 
   type SubmissionWithAssets = {
     id: string
-    assets: { id: string; submission_id: string; storage_path: string; file_name: string; file_size: number | null; created_at: string }[]
+    assets: { id: string; submission_id: string; storage_path: string; file_name: string; file_size: number | null; asset_type?: 'image' | 'video'; created_at: string }[]
   }
 
   const typedData = data as SubmissionWithAssets | null
 
+  // Ensure asset_type is present (infer from filename if not in DB yet)
+  const assetsWithType = (typedData?.assets || []).map((asset) => ({
+    ...asset,
+    asset_type: asset.asset_type || (isVideoFile(asset.file_name) ? 'video' : 'image') as 'image' | 'video',
+  }))
+
   return {
     hasSubmitted: !!typedData,
     submissionId: typedData?.id || null,
-    existingAssets: typedData?.assets || [],
+    existingAssets: assetsWithType,
+    currentDate: date,
   }
 }
 
-export async function createSubmission(assetPaths: string[]) {
+// Keep old function name for backwards compatibility
+export async function checkTodaySubmission() {
+  return checkSubmission()
+}
+
+export async function createSubmission(assetPaths: string[], targetDate?: string) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -44,16 +74,24 @@ export async function createSubmission(assetPaths: string[]) {
     return { error: 'Not authenticated' }
   }
 
-  // Check if already submitted today
-  const { hasSubmitted, submissionId: existingId } = await checkTodaySubmission()
+  // Use provided date or server's current date
+  const date = targetDate || getServerDate()
+
+  // Validate date is within allowed range
+  if (targetDate && !isDateInRange(targetDate)) {
+    return { error: 'Cannot submit for dates more than 7 days ago or in the future' }
+  }
+
+  // Check if already submitted for this date
+  const { hasSubmitted, submissionId: existingId } = await checkSubmission(date)
 
   let submissionId = existingId
 
   if (!hasSubmitted) {
-    // Create new submission
+    // Create new submission with explicit date
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: submission, error: submitError } = await (supabase.from('submissions') as any)
-      .insert({ user_id: user.id })
+      .insert({ user_id: user.id, submission_date: date })
       .select()
       .single()
 
@@ -68,11 +106,15 @@ export async function createSubmission(assetPaths: string[]) {
   }
 
   // Create asset records
-  const assets = assetPaths.map((path, index) => ({
-    submission_id: submissionId,
-    storage_path: path,
-    file_name: path.split('/').pop() || 'unknown',
-  }))
+  const assets = assetPaths.map((path) => {
+    const fileName = path.split('/').pop() || 'unknown'
+    return {
+      submission_id: submissionId,
+      storage_path: path,
+      file_name: fileName,
+      asset_type: isVideoFile(fileName) ? 'video' : 'image',
+    }
+  })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: assetsError } = await (supabase.from('assets') as any).insert(assets)
