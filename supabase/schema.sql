@@ -37,6 +37,7 @@ CREATE TABLE public.submissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     submission_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    comment TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_daily_submission UNIQUE (user_id, submission_date)
 );
@@ -174,6 +175,8 @@ CREATE POLICY "submissions_select_admin" ON public.submissions
     );
 CREATE POLICY "submissions_insert_own" ON public.submissions
     FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "submissions_update_own" ON public.submissions
+    FOR UPDATE USING (auth.uid() = user_id);
 
 -- Assets: own + admin
 CREATE POLICY "assets_select_own" ON public.assets

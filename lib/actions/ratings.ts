@@ -19,6 +19,7 @@ export async function getSubmissionsForJudging(date?: string) {
       id,
       submission_date,
       user_id,
+      comment,
       profiles!inner (
         full_name
       ),
@@ -52,6 +53,7 @@ export async function getSubmissionsForJudging(date?: string) {
     id: string
     submission_date: string
     user_id: string
+    comment: string | null
     profiles: { full_name: string | null }
     assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
     ratings: { id: string; rated_by: string; productivity: number; quality: number; convertability: number }[]
@@ -66,6 +68,7 @@ export async function getSubmissionsForJudging(date?: string) {
       id: sub.id,
       submission_date: sub.submission_date,
       user_id: sub.user_id,
+      comment: sub.comment,
       submitterName: sub.profiles?.full_name || 'Unknown',
       imageCount: sub.assets?.filter((a) => a.asset_type === 'image').length || 0,
       videoCount: sub.assets?.filter((a) => a.asset_type === 'video').length || 0,
@@ -91,6 +94,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
       id,
       submission_date,
       user_id,
+      comment,
       profiles!inner (
         full_name
       ),
@@ -118,6 +122,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     id: string
     submission_date: string
     user_id: string
+    comment: string | null
     profiles: { full_name: string | null }
     assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
     ratings: { id: string; rated_by: string; productivity: number; quality: number; convertability: number }[]
@@ -130,6 +135,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     id: sub.id,
     submission_date: sub.submission_date,
     user_id: sub.user_id,
+    comment: sub.comment,
     submitterName: sub.profiles?.full_name || 'Unknown',
     imageCount: sub.assets?.filter((a) => a.asset_type === 'image').length || 0,
     videoCount: sub.assets?.filter((a) => a.asset_type === 'video').length || 0,

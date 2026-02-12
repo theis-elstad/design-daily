@@ -9,6 +9,7 @@ interface Submission {
   id: string
   submission_date: string
   submitterName: string
+  comment?: string | null
   imageCount: number
   videoCount: number
   isRated: boolean

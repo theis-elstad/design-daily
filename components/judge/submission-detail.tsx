@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Image, Video, CheckCircle } from 'lucide-react'
+import { Image, Video, CheckCircle, MessageSquare } from 'lucide-react'
 import { SubmissionGallery } from './submission-gallery'
 import { RatingForm } from './rating-form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +13,7 @@ interface SubmissionDetailProps {
     id: string
     submission_date: string
     submitterName: string
+    comment?: string | null
     imageCount: number
     videoCount: number
     isRated: boolean
@@ -66,6 +67,17 @@ export function SubmissionDetail({ submission }: SubmissionDetailProps) {
           )}
         </div>
       </div>
+
+      {/* Designer's Comment */}
+      {submission.comment && (
+        <div className="flex gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <MessageSquare className="h-5 w-5 text-gray-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-gray-500 mb-1">Designer&apos;s Note</p>
+            <p className="text-gray-700 whitespace-pre-wrap">{submission.comment}</p>
+          </div>
+        </div>
+      )}
 
       {/* Gallery + Rating Form */}
       <div className="grid lg:grid-cols-3 gap-6">

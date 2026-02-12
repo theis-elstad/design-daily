@@ -40,18 +40,21 @@ export type Database = {
           id: string
           user_id: string
           submission_date: string
+          comment: string | null
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
           submission_date?: string
+          comment?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           user_id?: string
           submission_date?: string
+          comment?: string | null
           created_at?: string
         }
       }

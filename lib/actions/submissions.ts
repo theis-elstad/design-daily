@@ -33,13 +33,14 @@ export async function checkSubmission(targetDate?: string) {
 
   const { data } = await supabase
     .from('submissions')
-    .select('id, assets(*)')
+    .select('id, comment, assets(*)')
     .eq('user_id', user.id)
     .eq('submission_date', date)
     .single()
 
   type SubmissionWithAssets = {
     id: string
+    comment: string | null
     assets: { id: string; submission_id: string; storage_path: string; file_name: string; file_size: number | null; asset_type?: 'image' | 'video'; created_at: string }[]
   }
 
@@ -55,6 +56,7 @@ export async function checkSubmission(targetDate?: string) {
     hasSubmitted: !!typedData,
     submissionId: typedData?.id || null,
     existingAssets: assetsWithType,
+    existingComment: typedData?.comment || null,
     currentDate: date,
   }
 }
@@ -64,7 +66,7 @@ export async function checkTodaySubmission() {
   return checkSubmission()
 }
 
-export async function createSubmission(assetPaths: string[], targetDate?: string) {
+export async function createSubmission(assetPaths: string[], targetDate?: string, comment?: string) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -82,16 +84,19 @@ export async function createSubmission(assetPaths: string[], targetDate?: string
     return { error: 'Cannot submit for dates more than 7 days ago or in the future' }
   }
 
+  // Trim comment, treat empty string as null
+  const trimmedComment = comment?.trim() || null
+
   // Check if already submitted for this date
   const { hasSubmitted, submissionId: existingId } = await checkSubmission(date)
 
   let submissionId = existingId
 
   if (!hasSubmitted) {
-    // Create new submission with explicit date
+    // Create new submission with explicit date and optional comment
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: submission, error: submitError } = await (supabase.from('submissions') as any)
-      .insert({ user_id: user.id, submission_date: date })
+      .insert({ user_id: user.id, submission_date: date, comment: trimmedComment })
       .select()
       .single()
 
@@ -99,6 +104,12 @@ export async function createSubmission(assetPaths: string[], targetDate?: string
       return { error: submitError.message }
     }
     submissionId = submission.id
+  } else if (submissionId && trimmedComment !== undefined) {
+    // Update comment on existing submission
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('submissions') as any)
+      .update({ comment: trimmedComment })
+      .eq('id', submissionId)
   }
 
   if (!submissionId) {
@@ -125,6 +136,32 @@ export async function createSubmission(assetPaths: string[], targetDate?: string
 
   revalidatePath('/submit')
   return { success: true, submissionId }
+}
+
+export async function updateComment(submissionId: string, comment: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+
+  const trimmedComment = comment.trim() || null
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('submissions') as any)
+    .update({ comment: trimmedComment })
+    .eq('id', submissionId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath('/submit')
+  return { success: true }
 }
 
 export async function deleteAsset(assetId: string, storagePath: string) {

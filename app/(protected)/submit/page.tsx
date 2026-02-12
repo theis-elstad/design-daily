@@ -19,7 +19,7 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
   }
 
   const params = await searchParams
-  const { hasSubmitted, existingAssets, currentDate } = await checkSubmission(params.date)
+  const { hasSubmitted, existingAssets, existingComment, currentDate, submissionId } = await checkSubmission(params.date)
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -43,6 +43,8 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
         userId={profile.id}
         hasSubmitted={hasSubmitted}
         existingAssets={existingAssets || []}
+        existingComment={existingComment}
+        submissionId={submissionId}
         selectedDate={currentDate}
       />
     </div>

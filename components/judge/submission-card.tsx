@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { Image, Video, ChevronRight } from 'lucide-react'
+import { Image, Video, ChevronRight, MessageSquare } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
@@ -9,6 +9,7 @@ interface SubmissionCardProps {
     id: string
     submission_date: string
     submitterName: string
+    comment?: string | null
     imageCount: number
     videoCount: number
     isRated: boolean
@@ -53,7 +54,13 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
                   {submission.videoCount} video
                 </span>
               )}
-              {submission.imageCount === 0 && submission.videoCount === 0 && (
+              {submission.comment && (
+                <span className="flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Note
+                </span>
+              )}
+              {submission.imageCount === 0 && submission.videoCount === 0 && !submission.comment && (
                 <span className="text-gray-400">No assets</span>
               )}
             </div>
