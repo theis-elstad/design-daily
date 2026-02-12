@@ -1,12 +1,23 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Image, Video, CheckCircle, Pencil, MessageSquare } from 'lucide-react'
+import { Image, Video, CheckCircle, Pencil, MessageSquare, Trash2, Loader2, Star, User } from 'lucide-react'
+import { toast } from 'sonner'
 import { SubmissionGallery } from './submission-gallery'
 import { RatingForm } from './rating-form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface SubmissionDetailProps {
   submission: {
@@ -26,15 +37,48 @@ interface SubmissionDetailProps {
       storage_path: string
       file_name: string
     }[]
+    allRatings?: {
+      ratedBy: string
+      productivity: number
+      quality: number
+      ratedAt: string
+    }[]
   }
 }
 
 export function SubmissionDetail({ submission }: SubmissionDetailProps) {
   const router = useRouter()
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const date = new Date(submission.submission_date + 'T00:00:00')
 
   const handleRated = () => {
     router.refresh()
+  }
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      const response = await fetch('/api/submissions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: submission.id }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || result.error) {
+        toast.error(result.error || 'Failed to delete submission')
+      } else {
+        toast.success('Submission deleted')
+        router.push('/judge')
+      }
+    } catch {
+      toast.error('Failed to delete submission')
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
+    }
   }
 
   return (
@@ -70,6 +114,14 @@ export function SubmissionDetail({ submission }: SubmissionDetailProps) {
               Edited
             </Badge>
           )}
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-1.5" />
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -99,14 +151,84 @@ export function SubmissionDetail({ submission }: SubmissionDetailProps) {
           </Card>
         </div>
 
-        <div>
+        <div className="space-y-6">
           <RatingForm
             submissionId={submission.id}
             initialRating={submission.myRating}
             onRated={handleRated}
           />
+
+          {/* Reviewer Info */}
+          {submission.allRatings && submission.allRatings.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Reviews</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {submission.allRatings.map((rating, index) => (
+                  <div key={index} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-400" />
+                      <span className="font-medium text-sm">{rating.ratedBy}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 text-yellow-500" />
+                        Productivity: {rating.productivity}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 text-yellow-500" />
+                        Quality: {rating.quality}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {format(new Date(rating.ratedAt), 'MMM d, yyyy h:mm a')}
+                    </p>
+                    {index < submission.allRatings!.length - 1 && (
+                      <hr className="mt-2" />
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Submission?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this submission, all its assets, and any ratings. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

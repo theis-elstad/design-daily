@@ -122,7 +122,10 @@ export async function getSubmissionForJudgingById(submissionId: string) {
         rated_by,
         productivity,
         quality,
-        created_at
+        created_at,
+        profiles (
+          full_name
+        )
       )
     `
     )
@@ -139,7 +142,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     updated_at: string | null
     profiles: { full_name: string | null }
     assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
-    ratings: { id: string; rated_by: string; productivity: number; quality: number; created_at: string }[]
+    ratings: { id: string; rated_by: string; productivity: number; quality: number; created_at: string; profiles: { full_name: string | null } }[]
   }
 
   const sub = data as SubmissionResult
@@ -165,6 +168,12 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     assets: sub.assets || [],
     status,
     myRating: myRating || null,
+    allRatings: (sub.ratings || []).map((r) => ({
+      ratedBy: r.profiles?.full_name || 'Unknown',
+      productivity: r.productivity,
+      quality: r.quality,
+      ratedAt: r.created_at,
+    })),
   }
 }
 
