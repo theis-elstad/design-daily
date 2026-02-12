@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Check, Loader2 } from 'lucide-react'
 import { StarRating } from './star-rating'
-import { submitRating } from '@/lib/actions/ratings'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -29,27 +28,41 @@ export function RatingForm({
   const [convertability, setConvertability] = useState(
     initialRating?.convertability || 0
   )
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
 
   const canSubmit = productivity > 0 && quality > 0 && convertability > 0
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return
 
-    startTransition(async () => {
-      const result = await submitRating(submissionId, {
-        productivity,
-        quality,
-        convertability,
+    setIsPending(true)
+    try {
+      const response = await fetch('/api/ratings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId,
+          ratings: {
+            productivity,
+            quality,
+            convertability,
+          },
+        }),
       })
 
-      if (result.error) {
-        toast.error(result.error)
+      const result = await response.json()
+
+      if (!response.ok || result.error) {
+        toast.error(result.error || 'Failed to submit rating')
       } else {
         toast.success('Rating submitted!')
         onRated()
       }
-    })
+    } catch {
+      toast.error('Failed to submit rating. Please try again.')
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (
