@@ -173,11 +173,11 @@ export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) 
         </div>
       )}
 
-      {/* Podium */}
       <div
         ref={podiumRef}
         className="bg-white p-6 sm:p-8 rounded-lg"
       >
+        {/* Podium */}
         <div className="flex items-end justify-center gap-2 sm:gap-4">
           {/* Second place - left */}
           <PodiumPlace
@@ -213,61 +213,54 @@ export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) 
           />
         </div>
 
-        {/* Show message if there are ties */}
-        {(firstPlace.length > 1 || secondPlace.length > 1 || thirdPlace.length > 1) && (
-          <p className="text-center text-sm text-gray-500 mt-6">
-            Tied designers share the podium position
-          </p>
+        {/* Remaining rankings list */}
+        {restEntries.length > 0 && (
+          <div className="border rounded-lg divide-y mt-8">
+            {restEntries.map((entry) => {
+              const avatarUrl = getAvatarUrl(entry.avatar_path)
+              return (
+                <div
+                  key={entry.user_id}
+                  className="flex items-center gap-4 px-4 py-3"
+                >
+                  {/* Rank */}
+                  <div className="flex items-center justify-center w-8 h-8 shrink-0">
+                    <span className="text-gray-500 font-medium">{entry.rank}</span>
+                  </div>
+
+                  {/* Avatar + Name */}
+                  <Avatar className="h-9 w-9 shrink-0">
+                    {avatarUrl && (
+                      <AvatarImage src={avatarUrl} alt={entry.full_name || 'Avatar'} />
+                    )}
+                    <AvatarFallback className="bg-gray-100 text-gray-600 text-sm">
+                      {getInitials(entry.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{entry.full_name || 'Unknown'}</p>
+                  </div>
+
+                  {/* Submissions count */}
+                  <Badge variant="secondary" className="shrink-0">
+                    {entry.total_submissions}
+                  </Badge>
+
+                  {/* Score */}
+                  <span className="font-bold text-lg shrink-0 w-16 text-right">
+                    {formatScore(entry.avg_total_score)}
+                  </span>
+
+                  {/* Trend */}
+                  <div className="shrink-0 w-6">
+                    <TrendIndicator trend={entry.trend || 'same'} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
-
-      {/* Remaining rankings list */}
-      {restEntries.length > 0 && (
-        <div className="border rounded-lg divide-y">
-          {restEntries.map((entry) => {
-            const avatarUrl = getAvatarUrl(entry.avatar_path)
-            return (
-              <div
-                key={entry.user_id}
-                className="flex items-center gap-4 px-4 py-3"
-              >
-                {/* Rank */}
-                <div className="flex items-center justify-center w-8 h-8 shrink-0">
-                  <span className="text-gray-500 font-medium">{entry.rank}</span>
-                </div>
-
-                {/* Avatar + Name */}
-                <Avatar className="h-9 w-9 shrink-0">
-                  {avatarUrl && (
-                    <AvatarImage src={avatarUrl} alt={entry.full_name || 'Avatar'} />
-                  )}
-                  <AvatarFallback className="bg-gray-100 text-gray-600 text-sm">
-                    {getInitials(entry.full_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{entry.full_name || 'Unknown'}</p>
-                </div>
-
-                {/* Submissions count */}
-                <Badge variant="secondary" className="shrink-0">
-                  {entry.total_submissions}
-                </Badge>
-
-                {/* Score */}
-                <span className="font-bold text-lg shrink-0 w-16 text-right">
-                  {formatScore(entry.avg_total_score)}
-                </span>
-
-                {/* Trend */}
-                <div className="shrink-0 w-6">
-                  <TrendIndicator trend={entry.trend || 'same'} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }
