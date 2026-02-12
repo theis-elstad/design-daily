@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState } from 'react'
 import Link from 'next/link'
 import { login } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -16,11 +15,9 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
-function LoginForm() {
+export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const searchParams = useSearchParams()
-  const message = searchParams.get('message')
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
@@ -42,11 +39,6 @@ function LoginForm() {
       </CardHeader>
       <form action={handleSubmit}>
         <CardContent className="space-y-4">
-          {message && (
-            <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md">
-              {message}
-            </div>
-          )}
           {error && (
             <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
               {error}
@@ -80,13 +72,5 @@ function LoginForm() {
         </CardFooter>
       </form>
     </Card>
-  )
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <LoginForm />
-    </Suspense>
   )
 }
