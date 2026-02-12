@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const { productivity, quality, convertability } = ratings
-    if (!productivity || !quality || !convertability) {
+    const { productivity, quality } = ratings
+    if (!productivity || !quality) {
       return NextResponse.json({ error: 'All rating fields are required' }, { status: 400 })
     }
 
@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
         rated_by: user.id,
         productivity,
         quality,
-        convertability,
       },
       {
         onConflict: 'submission_id,rated_by',

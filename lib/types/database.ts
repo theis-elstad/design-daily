@@ -94,7 +94,6 @@ export type Database = {
           rated_by: string
           productivity: number
           quality: number
-          convertability: number
           created_at: string
         }
         Insert: {
@@ -103,7 +102,6 @@ export type Database = {
           rated_by: string
           productivity: number
           quality: number
-          convertability: number
           created_at?: string
         }
         Update: {
@@ -112,7 +110,6 @@ export type Database = {
           rated_by?: string
           productivity?: number
           quality?: number
-          convertability?: number
           created_at?: string
         }
       }
@@ -132,7 +129,6 @@ export type Database = {
           avg_total_score: number
           avg_productivity: number
           avg_quality: number
-          avg_convertability: number
           rank: number
         }[]
       }
@@ -166,7 +162,6 @@ export type LeaderboardEntry = {
   avg_total_score: number
   avg_productivity: number
   avg_quality: number
-  avg_convertability: number
   rank: number
   trend?: 'up' | 'down' | 'same'
 }

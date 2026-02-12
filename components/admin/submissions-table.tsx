@@ -36,7 +36,6 @@ interface Submission {
   ratingCount: number
   avgProductivity: number | null
   avgQuality: number | null
-  avgConvertability: number | null
   avgTotal: number | null
 }
 
@@ -163,7 +162,6 @@ export function SubmissionsTable({
                 </TableHead>
                 <TableHead className="text-center">Productivity</TableHead>
                 <TableHead className="text-center">Quality</TableHead>
-                <TableHead className="text-center">Convertability</TableHead>
                 <TableHead
                   className="text-center cursor-pointer hover:bg-gray-100"
                   onClick={() => toggleSort('total')}
@@ -177,7 +175,7 @@ export function SubmissionsTable({
             <TableBody>
               {filteredSubmissions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     No submissions found
                   </TableCell>
                 </TableRow>
@@ -219,14 +217,6 @@ export function SubmissionsTable({
                       )}
                     >
                       {formatScore(sub.avgQuality)}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        'text-center font-medium',
-                        sub.avgConvertability === null && 'text-gray-400'
-                      )}
-                    >
-                      {formatScore(sub.avgConvertability)}
                     </TableCell>
                     <TableCell className="text-center">
                       {sub.avgTotal !== null ? (

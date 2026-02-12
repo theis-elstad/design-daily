@@ -33,8 +33,7 @@ export async function getSubmissionsForJudging(date?: string) {
         id,
         rated_by,
         productivity,
-        quality,
-        convertability
+        quality
       )
     `
     )
@@ -56,7 +55,7 @@ export async function getSubmissionsForJudging(date?: string) {
     comment: string | null
     profiles: { full_name: string | null }
     assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
-    ratings: { id: string; rated_by: string; productivity: number; quality: number; convertability: number }[]
+    ratings: { id: string; rated_by: string; productivity: number; quality: number }[]
   }
 
   const typedSubmissions = (submissions || []) as SubmissionForJudging[]
@@ -108,8 +107,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
         id,
         rated_by,
         productivity,
-        quality,
-        convertability
+        quality
       )
     `
     )
@@ -125,7 +123,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     comment: string | null
     profiles: { full_name: string | null }
     assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
-    ratings: { id: string; rated_by: string; productivity: number; quality: number; convertability: number }[]
+    ratings: { id: string; rated_by: string; productivity: number; quality: number }[]
   }
 
   const sub = data as SubmissionResult
@@ -150,7 +148,6 @@ export async function submitRating(
   ratings: {
     productivity: number
     quality: number
-    convertability: number
   }
 ) {
   const supabase = await createClient()
@@ -182,7 +179,6 @@ export async function submitRating(
       rated_by: user.id,
       productivity: ratings.productivity,
       quality: ratings.quality,
-      convertability: ratings.convertability,
     },
     {
       onConflict: 'submission_id,rated_by',

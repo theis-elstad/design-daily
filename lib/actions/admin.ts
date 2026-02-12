@@ -74,7 +74,6 @@ export async function getAllSubmissions(filters: {
       ratings (
         productivity,
         quality,
-        convertability,
         profiles!inner (full_name)
       )
     `
@@ -102,7 +101,7 @@ export async function getAllSubmissions(filters: {
     created_at: string
     profiles: { full_name: string | null; email: string }
     assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
-    ratings: { productivity: number; quality: number; convertability: number; profiles: { full_name: string | null } }[]
+    ratings: { productivity: number; quality: number; profiles: { full_name: string | null } }[]
   }
 
   const typedData = (data || []) as SubmissionWithRelations[]
@@ -117,13 +116,9 @@ export async function getAllSubmissions(filters: {
       ratings.length > 0
         ? ratings.reduce((sum, r) => sum + r.quality, 0) / ratings.length
         : null
-    const avgConvertability =
-      ratings.length > 0
-        ? ratings.reduce((sum, r) => sum + r.convertability, 0) / ratings.length
-        : null
     const avgTotal =
-      avgProductivity !== null && avgQuality !== null && avgConvertability !== null
-        ? avgProductivity + avgQuality + avgConvertability
+      avgProductivity !== null && avgQuality !== null
+        ? avgProductivity + avgQuality
         : null
 
     const assets = sub.assets || []
@@ -134,7 +129,6 @@ export async function getAllSubmissions(filters: {
       ...sub,
       avgProductivity,
       avgQuality,
-      avgConvertability,
       avgTotal,
       assetCount: assets.length,
       imageCount,
@@ -203,8 +197,7 @@ export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all'
         assets (id, asset_type),
         ratings (
           productivity,
-          quality,
-          convertability
+          quality
         )
       )
     `
@@ -221,7 +214,7 @@ export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all'
       id: string
       submission_date: string
       assets: { id: string; asset_type: 'image' | 'video' }[]
-      ratings: { productivity: number; quality: number; convertability: number }[]
+      ratings: { productivity: number; quality: number }[]
     }[]
   }
 
@@ -247,11 +240,6 @@ export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all'
       allRatings.length > 0
         ? allRatings.reduce((sum, r) => sum + r.quality, 0) / allRatings.length
         : null
-    const avgConvertability =
-      allRatings.length > 0
-        ? allRatings.reduce((sum, r) => sum + r.convertability, 0) / allRatings.length
-        : null
-
     return {
       id: designer.id,
       name: designer.full_name,
@@ -260,10 +248,9 @@ export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all'
       videoAssets,
       avgProductivity,
       avgQuality,
-      avgConvertability,
       avgTotal:
-        avgProductivity !== null && avgQuality !== null && avgConvertability !== null
-          ? avgProductivity + avgQuality + avgConvertability
+        avgProductivity !== null && avgQuality !== null
+          ? avgProductivity + avgQuality
           : null,
     }
   })

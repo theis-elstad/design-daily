@@ -23,7 +23,6 @@ interface DesignerStat {
   videoAssets: number
   avgProductivity: number | null
   avgQuality: number | null
-  avgConvertability: number | null
   avgTotal: number | null
 }
 
@@ -31,7 +30,7 @@ interface DesignerStatsTableProps {
   stats: DesignerStat[]
 }
 
-type SortField = 'name' | 'submissions' | 'static' | 'video' | 'productivity' | 'quality' | 'convertability' | 'total'
+type SortField = 'name' | 'submissions' | 'static' | 'video' | 'productivity' | 'quality' | 'total'
 type SortDirection = 'asc' | 'desc'
 
 const timeRangeOptions: { value: DesignerStatsTimeRange; label: string }[] = [
@@ -103,11 +102,6 @@ export function DesignerStatsTable({ stats: initialStats }: DesignerStatsTablePr
       case 'quality': {
         const aVal = a.avgQuality ?? -Infinity
         const bVal = b.avgQuality ?? -Infinity
-        return multiplier * (aVal - bVal)
-      }
-      case 'convertability': {
-        const aVal = a.avgConvertability ?? -Infinity
-        const bVal = b.avgConvertability ?? -Infinity
         return multiplier * (aVal - bVal)
       }
       case 'total': {
@@ -196,14 +190,6 @@ export function DesignerStatsTable({ stats: initialStats }: DesignerStatsTablePr
                 </TableHead>
                 <TableHead
                   className="text-center cursor-pointer hover:bg-gray-100"
-                  onClick={() => toggleSort('convertability')}
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    Avg Convertability <SortIcon field="convertability" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="text-center cursor-pointer hover:bg-gray-100"
                   onClick={() => toggleSort('total')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -215,7 +201,7 @@ export function DesignerStatsTable({ stats: initialStats }: DesignerStatsTablePr
             <TableBody>
               {sortedStats.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     No designer data available
                   </TableCell>
                 </TableRow>
@@ -243,14 +229,6 @@ export function DesignerStatsTable({ stats: initialStats }: DesignerStatsTablePr
                       )}
                     >
                       {formatScore(stat.avgQuality)}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        'text-center',
-                        stat.avgConvertability === null && 'text-gray-400'
-                      )}
-                    >
-                      {formatScore(stat.avgConvertability)}
                     </TableCell>
                     <TableCell className="text-center font-bold">
                       {formatScore(stat.avgTotal)}

@@ -20,7 +20,6 @@ interface SubmissionDetailProps {
     myRating: {
       productivity: number
       quality: number
-      convertability: number
     } | null
     assets: {
       id: string

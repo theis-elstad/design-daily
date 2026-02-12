@@ -13,7 +13,7 @@ interface StarRatingProps {
 export function StarRating({
   value,
   onChange,
-  maxStars = 3,
+  maxStars = 5,
   disabled = false,
 }: StarRatingProps) {
   return (
