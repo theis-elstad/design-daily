@@ -108,7 +108,7 @@ export async function createSubmission(assetPaths: string[], targetDate?: string
     // Update comment on existing submission
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('submissions') as any)
-      .update({ comment: trimmedComment })
+      .update({ comment: trimmedComment, updated_at: new Date().toISOString() })
       .eq('id', submissionId)
   }
 
@@ -134,6 +134,14 @@ export async function createSubmission(assetPaths: string[], targetDate?: string
     return { error: assetsError.message }
   }
 
+  // Mark submission as updated when new assets are added to an existing submission
+  if (hasSubmitted && submissionId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('submissions') as any)
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', submissionId)
+  }
+
   revalidatePath('/submit')
   return { success: true, submissionId }
 }
@@ -152,7 +160,7 @@ export async function updateComment(submissionId: string, comment: string) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('submissions') as any)
-    .update({ comment: trimmedComment })
+    .update({ comment: trimmedComment, updated_at: new Date().toISOString() })
     .eq('id', submissionId)
     .eq('user_id', user.id)
 
@@ -167,6 +175,13 @@ export async function updateComment(submissionId: string, comment: string) {
 export async function deleteAsset(assetId: string, storagePath: string) {
   const supabase = await createClient()
 
+  // Get the submission_id before deleting the asset
+  const { data: asset } = await supabase
+    .from('assets')
+    .select('submission_id')
+    .eq('id', assetId)
+    .single() as { data: { submission_id: string } | null }
+
   // Delete from storage
   await supabase.storage.from('submissions').remove([storagePath])
 
@@ -175,6 +190,14 @@ export async function deleteAsset(assetId: string, storagePath: string) {
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Mark submission as updated
+  if (asset?.submission_id) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('submissions') as any)
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', asset.submission_id)
   }
 
   revalidatePath('/submit')

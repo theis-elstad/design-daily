@@ -20,6 +20,7 @@ export async function getSubmissionsForJudging(date?: string) {
       submission_date,
       user_id,
       comment,
+      updated_at,
       profiles!inner (
         full_name
       ),
@@ -33,7 +34,8 @@ export async function getSubmissionsForJudging(date?: string) {
         id,
         rated_by,
         productivity,
-        quality
+        quality,
+        created_at
       )
     `
     )
@@ -53,16 +55,27 @@ export async function getSubmissionsForJudging(date?: string) {
     submission_date: string
     user_id: string
     comment: string | null
+    updated_at: string | null
     profiles: { full_name: string | null }
     assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
-    ratings: { id: string; rated_by: string; productivity: number; quality: number }[]
+    ratings: { id: string; rated_by: string; productivity: number; quality: number; created_at: string }[]
   }
 
   const typedSubmissions = (submissions || []) as SubmissionForJudging[]
 
-  // Mark which submissions have been rated by current user and compute counts
+  // Determine status: needs_review, rated, or edited
   return typedSubmissions.map((sub) => {
     const myRating = sub.ratings?.find((r) => r.rated_by === user.id)
+
+    let status: 'needs_review' | 'rated' | 'edited' = 'needs_review'
+    if (myRating) {
+      if (sub.updated_at && new Date(sub.updated_at) > new Date(myRating.created_at)) {
+        status = 'edited'
+      } else {
+        status = 'rated'
+      }
+    }
+
     return {
       id: sub.id,
       submission_date: sub.submission_date,
@@ -72,7 +85,7 @@ export async function getSubmissionsForJudging(date?: string) {
       imageCount: sub.assets?.filter((a) => a.asset_type === 'image').length || 0,
       videoCount: sub.assets?.filter((a) => a.asset_type === 'video').length || 0,
       assets: sub.assets || [],
-      isRated: !!myRating,
+      status,
       myRating: myRating || null,
     }
   })
@@ -94,6 +107,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
       submission_date,
       user_id,
       comment,
+      updated_at,
       profiles!inner (
         full_name
       ),
@@ -107,7 +121,8 @@ export async function getSubmissionForJudgingById(submissionId: string) {
         id,
         rated_by,
         productivity,
-        quality
+        quality,
+        created_at
       )
     `
     )
@@ -121,13 +136,23 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     submission_date: string
     user_id: string
     comment: string | null
+    updated_at: string | null
     profiles: { full_name: string | null }
     assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
-    ratings: { id: string; rated_by: string; productivity: number; quality: number }[]
+    ratings: { id: string; rated_by: string; productivity: number; quality: number; created_at: string }[]
   }
 
   const sub = data as SubmissionResult
   const myRating = sub.ratings?.find((r) => r.rated_by === user.id)
+
+  let status: 'needs_review' | 'rated' | 'edited' = 'needs_review'
+  if (myRating) {
+    if (sub.updated_at && new Date(sub.updated_at) > new Date(myRating.created_at)) {
+      status = 'edited'
+    } else {
+      status = 'rated'
+    }
+  }
 
   return {
     id: sub.id,
@@ -138,7 +163,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     imageCount: sub.assets?.filter((a) => a.asset_type === 'image').length || 0,
     videoCount: sub.assets?.filter((a) => a.asset_type === 'video').length || 0,
     assets: sub.assets || [],
-    isRated: !!myRating,
+    status,
     myRating: myRating || null,
   }
 }
@@ -212,10 +237,10 @@ export async function getJudgingStats(date?: string) {
 
   const { count: totalSubmissions } = await totalQuery
 
-  // Build rated submissions query
+  // Build rated submissions query — include submission updated_at and rating created_at
   let ratedQuery = supabase
     .from('ratings')
-    .select('submission_id, submissions!inner(submission_date)')
+    .select('submission_id, created_at, submissions!inner(submission_date, updated_at)')
     .eq('rated_by', user.id)
 
   if (date) {
@@ -224,11 +249,24 @@ export async function getJudgingStats(date?: string) {
 
   const { data: ratedSubmissions } = await ratedQuery
 
-  const ratedCount = ratedSubmissions?.length || 0
+  type RatedSubmission = {
+    submission_id: string
+    created_at: string
+    submissions: { submission_date: string; updated_at: string | null }
+  }
+
+  const typedRated = (ratedSubmissions || []) as unknown as RatedSubmission[]
+
+  // Only count as "rated" if the submission hasn't been edited after the rating
+  const fullyRatedCount = typedRated.filter((r) => {
+    const updatedAt = r.submissions?.updated_at
+    if (!updatedAt) return true
+    return new Date(updatedAt) <= new Date(r.created_at)
+  }).length
 
   return {
     total: totalSubmissions || 0,
-    rated: ratedCount,
-    remaining: (totalSubmissions || 0) - ratedCount,
+    rated: fullyRatedCount,
+    remaining: (totalSubmissions || 0) - fullyRatedCount,
   }
 }

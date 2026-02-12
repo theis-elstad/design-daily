@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Image, Video, CheckCircle, MessageSquare } from 'lucide-react'
+import { Image, Video, CheckCircle, Pencil, MessageSquare } from 'lucide-react'
 import { SubmissionGallery } from './submission-gallery'
 import { RatingForm } from './rating-form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,7 +16,7 @@ interface SubmissionDetailProps {
     comment?: string | null
     imageCount: number
     videoCount: number
-    isRated: boolean
+    status: 'needs_review' | 'rated' | 'edited'
     myRating: {
       productivity: number
       quality: number
@@ -58,10 +58,16 @@ export function SubmissionDetail({ submission }: SubmissionDetailProps) {
               {submission.videoCount} video
             </Badge>
           )}
-          {submission.isRated && (
+          {submission.status === 'rated' && (
             <Badge variant="secondary" className="bg-green-100 text-green-700 gap-1">
               <CheckCircle className="h-3 w-3" />
               Rated
+            </Badge>
+          )}
+          {submission.status === 'edited' && (
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700 gap-1">
+              <Pencil className="h-3 w-3" />
+              Edited
             </Badge>
           )}
         </div>

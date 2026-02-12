@@ -12,7 +12,30 @@ interface SubmissionCardProps {
     comment?: string | null
     imageCount: number
     videoCount: number
-    isRated: boolean
+    status: 'needs_review' | 'rated' | 'edited'
+  }
+}
+
+function StatusBadge({ status }: { status: 'needs_review' | 'rated' | 'edited' }) {
+  switch (status) {
+    case 'rated':
+      return (
+        <Badge variant="secondary" className="bg-green-100 text-green-700 shrink-0">
+          Rated
+        </Badge>
+      )
+    case 'edited':
+      return (
+        <Badge variant="secondary" className="bg-blue-100 text-blue-700 shrink-0">
+          Edited
+        </Badge>
+      )
+    default:
+      return (
+        <Badge variant="secondary" className="bg-amber-100 text-amber-700 shrink-0">
+          Needs Review
+        </Badge>
+      )
   }
 }
 
@@ -28,15 +51,7 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
               <span className="font-medium text-gray-900 truncate">
                 {submission.submitterName}
               </span>
-              {submission.isRated ? (
-                <Badge variant="secondary" className="bg-green-100 text-green-700 shrink-0">
-                  Rated
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="bg-amber-100 text-amber-700 shrink-0">
-                  Needs Review
-                </Badge>
-              )}
+              <StatusBadge status={submission.status} />
             </div>
             <p className="text-sm text-gray-500 mb-2">
               {format(date, 'MMM d, yyyy')}

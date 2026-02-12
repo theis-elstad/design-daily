@@ -39,6 +39,7 @@ CREATE TABLE public.submissions (
     submission_date DATE NOT NULL DEFAULT CURRENT_DATE,
     comment TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
     CONSTRAINT unique_daily_submission UNIQUE (user_id, submission_date)
 );
 

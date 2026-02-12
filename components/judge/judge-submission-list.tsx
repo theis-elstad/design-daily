@@ -12,7 +12,7 @@ interface Submission {
   comment?: string | null
   imageCount: number
   videoCount: number
-  isRated: boolean
+  status: 'needs_review' | 'rated' | 'edited'
 }
 
 interface JudgeSubmissionListProps {
@@ -24,8 +24,8 @@ export function JudgeSubmissionList({ submissions, initialTab }: JudgeSubmission
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const needsReview = submissions.filter((s) => !s.isRated)
-  const completed = submissions.filter((s) => s.isRated)
+  const needsReview = submissions.filter((s) => s.status === 'needs_review' || s.status === 'edited')
+  const completed = submissions.filter((s) => s.status === 'rated')
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString())
