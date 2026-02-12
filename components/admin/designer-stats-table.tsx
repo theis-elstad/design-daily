@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useTransition } from 'react'
+import { ChevronDown, ChevronUp, Image, Video } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -11,13 +11,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { getDesignerStats, type DesignerStatsTimeRange } from '@/lib/actions/admin'
 
 interface DesignerStat {
   id: string
   name: string | null
   totalSubmissions: number
-  totalAssets: number
+  staticAssets: number
+  videoAssets: number
   avgProductivity: number | null
   avgQuality: number | null
   avgConvertability: number | null
@@ -28,12 +31,23 @@ interface DesignerStatsTableProps {
   stats: DesignerStat[]
 }
 
-type SortField = 'name' | 'submissions' | 'assets' | 'productivity' | 'quality' | 'convertability' | 'total'
+type SortField = 'name' | 'submissions' | 'static' | 'video' | 'productivity' | 'quality' | 'convertability' | 'total'
 type SortDirection = 'asc' | 'desc'
 
-export function DesignerStatsTable({ stats }: DesignerStatsTableProps) {
+const timeRangeOptions: { value: DesignerStatsTimeRange; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: '7days', label: '7 Days' },
+  { value: '30days', label: '30 Days' },
+  { value: 'all', label: 'All Time' },
+]
+
+export function DesignerStatsTable({ stats: initialStats }: DesignerStatsTableProps) {
+  const [stats, setStats] = useState(initialStats)
   const [sortField, setSortField] = useState<SortField>('total')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [activeRange, setActiveRange] = useState<DesignerStatsTimeRange>('all')
+  const [isPending, startTransition] = useTransition()
 
   const formatScore = (score: number | null) => {
     if (score === null) return '-'
@@ -47,6 +61,14 @@ export function DesignerStatsTable({ stats }: DesignerStatsTableProps) {
       setSortField(field)
       setSortDirection('desc')
     }
+  }
+
+  const handleTimeRangeChange = (range: DesignerStatsTimeRange) => {
+    setActiveRange(range)
+    startTransition(async () => {
+      const newStats = await getDesignerStats(range)
+      setStats(newStats)
+    })
   }
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -69,8 +91,10 @@ export function DesignerStatsTable({ stats }: DesignerStatsTableProps) {
       }
       case 'submissions':
         return multiplier * (a.totalSubmissions - b.totalSubmissions)
-      case 'assets':
-        return multiplier * (a.totalAssets - b.totalAssets)
+      case 'static':
+        return multiplier * (a.staticAssets - b.staticAssets)
+      case 'video':
+        return multiplier * (a.videoAssets - b.videoAssets)
       case 'productivity': {
         const aVal = a.avgProductivity ?? -Infinity
         const bVal = b.avgProductivity ?? -Infinity
@@ -98,11 +122,25 @@ export function DesignerStatsTable({ stats }: DesignerStatsTableProps) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <CardTitle className="text-lg">Designer Performance Summary</CardTitle>
+        <div className="flex items-center gap-1">
+          {timeRangeOptions.map((option) => (
+            <Button
+              key={option.value}
+              variant={activeRange === option.value ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleTimeRangeChange(option.value)}
+              disabled={isPending}
+              className="text-xs"
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
       </CardHeader>
       <CardContent>
-        <div className="border rounded-lg overflow-hidden">
+        <div className={cn('border rounded-lg overflow-hidden', isPending && 'opacity-50')}>
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
@@ -124,10 +162,20 @@ export function DesignerStatsTable({ stats }: DesignerStatsTableProps) {
                 </TableHead>
                 <TableHead
                   className="text-center cursor-pointer hover:bg-gray-100"
-                  onClick={() => toggleSort('assets')}
+                  onClick={() => toggleSort('static')}
                 >
                   <div className="flex items-center justify-center gap-1">
-                    Assets <SortIcon field="assets" />
+                    <Image className="h-3.5 w-3.5" />
+                    Static <SortIcon field="static" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="text-center cursor-pointer hover:bg-gray-100"
+                  onClick={() => toggleSort('video')}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <Video className="h-3.5 w-3.5" />
+                    Video <SortIcon field="video" />
                   </div>
                 </TableHead>
                 <TableHead
@@ -167,7 +215,7 @@ export function DesignerStatsTable({ stats }: DesignerStatsTableProps) {
             <TableBody>
               {sortedStats.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     No designer data available
                   </TableCell>
                 </TableRow>
@@ -178,7 +226,8 @@ export function DesignerStatsTable({ stats }: DesignerStatsTableProps) {
                       {stat.name || 'Unknown'}
                     </TableCell>
                     <TableCell className="text-center">{stat.totalSubmissions}</TableCell>
-                    <TableCell className="text-center">{stat.totalAssets}</TableCell>
+                    <TableCell className="text-center">{stat.staticAssets}</TableCell>
+                    <TableCell className="text-center">{stat.videoAssets}</TableCell>
                     <TableCell
                       className={cn(
                         'text-center',

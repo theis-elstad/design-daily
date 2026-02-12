@@ -2,24 +2,20 @@ export const runtime = 'edge'
 
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { LeaderboardTable } from '@/components/leaderboard/leaderboard-table'
 import { LeaderboardPodium } from '@/components/leaderboard/leaderboard-podium'
 import { TimeRangeToggle, type TimeRange } from '@/components/leaderboard/time-range-toggle'
-import { ViewToggle, type ViewMode } from '@/components/leaderboard/view-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { LeaderboardEntry } from '@/lib/types/database'
 
 interface LeaderboardPageProps {
-  searchParams: Promise<{ range?: TimeRange; view?: ViewMode }>
+  searchParams: Promise<{ range?: TimeRange }>
 }
 
 async function LeaderboardData({
   range,
-  view,
   isAdmin,
 }: {
   range: TimeRange
-  view: ViewMode
   isAdmin: boolean
 }) {
   const supabase = await createClient()
@@ -70,12 +66,7 @@ async function LeaderboardData({
     return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null }
   })
 
-  // Non-admins only see podium view
-  if (!isAdmin || view === 'podium') {
-    return <LeaderboardPodium entries={leaderboardWithTrends} isAdmin={isAdmin} />
-  }
-
-  return <LeaderboardTable entries={leaderboardWithTrends} />
+  return <LeaderboardPodium entries={leaderboardWithTrends} isAdmin={isAdmin} />
 }
 
 function LeaderboardSkeleton() {
@@ -101,9 +92,8 @@ function LeaderboardSkeleton() {
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const params = await searchParams
   const range = params.range || 'week'
-  const view = params.view || 'podium'
 
-  // Check if user is admin
+  // Check if user is admin (for download button)
   const supabase = await createClient()
   const {
     data: { user },
@@ -132,16 +122,10 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           </div>
           <TimeRangeToggle currentRange={range} />
         </div>
-
-        {isAdmin && (
-          <div className="flex justify-end">
-            <ViewToggle currentView={view} />
-          </div>
-        )}
       </div>
 
       <Suspense fallback={<LeaderboardSkeleton />}>
-        <LeaderboardData range={range} view={view} isAdmin={isAdmin} />
+        <LeaderboardData range={range} isAdmin={isAdmin} />
       </Suspense>
     </div>
   )

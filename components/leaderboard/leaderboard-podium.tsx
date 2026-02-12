@@ -3,7 +3,9 @@
 import { useRef } from 'react'
 import { Trophy, Download } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { TrendIndicator } from './trend-indicator'
 import { cn, getAvatarUrl } from '@/lib/utils'
 import type { LeaderboardEntry } from '@/lib/types/database'
 
@@ -117,7 +119,6 @@ export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) 
     if (!podiumRef.current) return
 
     try {
-      // Dynamically import html-to-image
       const htmlToImage = await import('html-to-image')
 
       const dataUrl = await htmlToImage.toPng(podiumRef.current, {
@@ -152,6 +153,15 @@ export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) 
   const secondPlace = groupedByRank[2] || []
   const thirdPlace = groupedByRank[3] || []
 
+  // Collect all user_ids on the podium (ranks 1, 2, 3) to exclude from the list below
+  const podiumUserIds = new Set<string>()
+  ;[firstPlace, secondPlace, thirdPlace].forEach((group) => {
+    group.forEach((e) => podiumUserIds.add(e.user_id))
+  })
+
+  // Remaining entries: anyone not on the podium
+  const restEntries = entries.filter((e) => !podiumUserIds.has(e.user_id))
+
   return (
     <div className="space-y-6">
       {isAdmin && (
@@ -163,6 +173,7 @@ export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) 
         </div>
       )}
 
+      {/* Podium */}
       <div
         ref={podiumRef}
         className="bg-white p-6 sm:p-8 rounded-lg"
@@ -209,6 +220,54 @@ export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) 
           </p>
         )}
       </div>
+
+      {/* Remaining rankings list */}
+      {restEntries.length > 0 && (
+        <div className="border rounded-lg divide-y">
+          {restEntries.map((entry) => {
+            const avatarUrl = getAvatarUrl(entry.avatar_path)
+            return (
+              <div
+                key={entry.user_id}
+                className="flex items-center gap-4 px-4 py-3"
+              >
+                {/* Rank */}
+                <div className="flex items-center justify-center w-8 h-8 shrink-0">
+                  <span className="text-gray-500 font-medium">{entry.rank}</span>
+                </div>
+
+                {/* Avatar + Name */}
+                <Avatar className="h-9 w-9 shrink-0">
+                  {avatarUrl && (
+                    <AvatarImage src={avatarUrl} alt={entry.full_name || 'Avatar'} />
+                  )}
+                  <AvatarFallback className="bg-gray-100 text-gray-600 text-sm">
+                    {getInitials(entry.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{entry.full_name || 'Unknown'}</p>
+                </div>
+
+                {/* Submissions count */}
+                <Badge variant="secondary" className="shrink-0">
+                  {entry.total_submissions}
+                </Badge>
+
+                {/* Score */}
+                <span className="font-bold text-lg shrink-0 w-16 text-right">
+                  {formatScore(entry.avg_total_score)}
+                </span>
+
+                {/* Trend */}
+                <div className="shrink-0 w-6">
+                  <TrendIndicator trend={entry.trend || 'same'} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

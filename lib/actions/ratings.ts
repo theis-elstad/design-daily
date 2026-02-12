@@ -11,20 +11,22 @@ export async function getSubmissionsForJudging(date?: string) {
 
   if (!user) return []
 
-  const targetDate = date || new Date().toISOString().split('T')[0]
-
-  // Get all submissions for the date with their assets and rating status
-  const { data: submissions } = await supabase
+  // Build query with profile join and asset_type
+  let query = supabase
     .from('submissions')
     .select(
       `
       id,
       submission_date,
       user_id,
+      profiles!inner (
+        full_name
+      ),
       assets (
         id,
         storage_path,
-        file_name
+        file_name,
+        asset_type
       ),
       ratings!left (
         id,
@@ -35,29 +37,106 @@ export async function getSubmissionsForJudging(date?: string) {
       )
     `
     )
-    .eq('submission_date', targetDate)
-    .order('created_at', { ascending: true })
+    .order('submission_date', { ascending: false })
+    .limit(100)
+
+  // Only filter by date if one is provided
+  if (date) {
+    query = query.eq('submission_date', date)
+  }
+
+  const { data: submissions } = await query
 
   // Define types for the query result
   type SubmissionForJudging = {
     id: string
     submission_date: string
     user_id: string
-    assets: { id: string; storage_path: string; file_name: string }[]
+    profiles: { full_name: string | null }
+    assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
     ratings: { id: string; rated_by: string; productivity: number; quality: number; convertability: number }[]
   }
 
   const typedSubmissions = (submissions || []) as SubmissionForJudging[]
 
-  // Mark which submissions have been rated by current user
+  // Mark which submissions have been rated by current user and compute counts
   return typedSubmissions.map((sub) => {
     const myRating = sub.ratings?.find((r) => r.rated_by === user.id)
     return {
-      ...sub,
+      id: sub.id,
+      submission_date: sub.submission_date,
+      user_id: sub.user_id,
+      submitterName: sub.profiles?.full_name || 'Unknown',
+      imageCount: sub.assets?.filter((a) => a.asset_type === 'image').length || 0,
+      videoCount: sub.assets?.filter((a) => a.asset_type === 'video').length || 0,
+      assets: sub.assets || [],
       isRated: !!myRating,
       myRating: myRating || null,
     }
   })
+}
+
+export async function getSubmissionForJudgingById(submissionId: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return null
+
+  const { data } = await supabase
+    .from('submissions')
+    .select(
+      `
+      id,
+      submission_date,
+      user_id,
+      profiles!inner (
+        full_name
+      ),
+      assets (
+        id,
+        storage_path,
+        file_name,
+        asset_type
+      ),
+      ratings!left (
+        id,
+        rated_by,
+        productivity,
+        quality,
+        convertability
+      )
+    `
+    )
+    .eq('id', submissionId)
+    .single()
+
+  if (!data) return null
+
+  type SubmissionResult = {
+    id: string
+    submission_date: string
+    user_id: string
+    profiles: { full_name: string | null }
+    assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
+    ratings: { id: string; rated_by: string; productivity: number; quality: number; convertability: number }[]
+  }
+
+  const sub = data as SubmissionResult
+  const myRating = sub.ratings?.find((r) => r.rated_by === user.id)
+
+  return {
+    id: sub.id,
+    submission_date: sub.submission_date,
+    user_id: sub.user_id,
+    submitterName: sub.profiles?.full_name || 'Unknown',
+    imageCount: sub.assets?.filter((a) => a.asset_type === 'image').length || 0,
+    videoCount: sub.assets?.filter((a) => a.asset_type === 'video').length || 0,
+    assets: sub.assets || [],
+    isRated: !!myRating,
+    myRating: myRating || null,
+  }
 }
 
 export async function submitRating(
@@ -108,7 +187,7 @@ export async function submitRating(
     return { error: error.message }
   }
 
-  revalidatePath('/judge')
+  revalidatePath('/judge', 'layout')
   return { success: true }
 }
 
@@ -120,20 +199,28 @@ export async function getJudgingStats(date?: string) {
 
   if (!user) return null
 
-  const targetDate = date || new Date().toISOString().split('T')[0]
-
-  // Get total submissions for the date
-  const { count: totalSubmissions } = await supabase
+  // Build total submissions query
+  let totalQuery = supabase
     .from('submissions')
     .select('*', { count: 'exact', head: true })
-    .eq('submission_date', targetDate)
 
-  // Get submissions rated by current user for the date
-  const { data: ratedSubmissions } = await supabase
+  if (date) {
+    totalQuery = totalQuery.eq('submission_date', date)
+  }
+
+  const { count: totalSubmissions } = await totalQuery
+
+  // Build rated submissions query
+  let ratedQuery = supabase
     .from('ratings')
     .select('submission_id, submissions!inner(submission_date)')
     .eq('rated_by', user.id)
-    .eq('submissions.submission_date', targetDate)
+
+  if (date) {
+    ratedQuery = ratedQuery.eq('submissions.submission_date', date)
+  }
+
+  const { data: ratedSubmissions } = await ratedQuery
 
   const ratedCount = ratedSubmissions?.length || 0
 

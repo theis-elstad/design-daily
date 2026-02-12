@@ -6,44 +6,35 @@ import {
   getAllSubmissions,
   getDesigners,
   getDesignerStats,
-  getDesignerProductivityData,
 } from '@/lib/actions/admin'
 import { StatsCards } from '@/components/admin/stats-cards'
-import { SubmissionsChart } from '@/components/admin/submissions-chart'
-import { DesignerProductivityChart } from '@/components/admin/designer-productivity-chart'
 import { SubmissionsTable } from '@/components/admin/submissions-table'
 import { DesignerStatsTable } from '@/components/admin/designer-stats-table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 async function AdminDashboardContent() {
-  const [stats, submissions, designers, designerStats, productivityData] = await Promise.all([
+  const [stats, submissions, designers, designerStats] = await Promise.all([
     getAdminStats(),
     getAllSubmissions({}),
     getDesigners(),
     getDesignerStats(),
-    getDesignerProductivityData('week'),
   ])
 
   return (
     <div className="space-y-8">
       <StatsCards stats={stats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <SubmissionsChart data={stats.chartData} />
-        <DesignerProductivityChart initialData={productivityData} />
-      </div>
-
-      <Tabs defaultValue="submissions">
+      <Tabs defaultValue="designers">
         <TabsList>
-          <TabsTrigger value="submissions">All Submissions</TabsTrigger>
           <TabsTrigger value="designers">Designer Summary</TabsTrigger>
+          <TabsTrigger value="submissions">All Submissions</TabsTrigger>
         </TabsList>
-        <TabsContent value="submissions" className="mt-4">
-          <SubmissionsTable submissions={submissions} designers={designers} />
-        </TabsContent>
         <TabsContent value="designers" className="mt-4">
           <DesignerStatsTable stats={designerStats} />
+        </TabsContent>
+        <TabsContent value="submissions" className="mt-4">
+          <SubmissionsTable submissions={submissions} designers={designers} />
         </TabsContent>
       </Tabs>
     </div>
@@ -57,10 +48,6 @@ function DashboardSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-[120px] rounded-lg" />
         ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Skeleton className="h-[350px] rounded-lg" />
-        <Skeleton className="h-[350px] rounded-lg" />
       </div>
       <Skeleton className="h-[400px] rounded-lg" />
     </div>

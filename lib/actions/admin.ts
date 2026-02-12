@@ -156,10 +156,42 @@ export async function getDesigners() {
   return data || []
 }
 
-export async function getDesignerStats() {
+export type DesignerStatsTimeRange = 'today' | 'yesterday' | '7days' | '30days' | 'all'
+
+export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all') {
   const supabase = await createClient()
 
-  const { data } = await supabase
+  // Build the date filter
+  let startDate: string | null = null
+  if (timeRange !== 'all') {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    switch (timeRange) {
+      case 'today':
+        startDate = today.toISOString().split('T')[0]
+        break
+      case 'yesterday': {
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        startDate = yesterday.toISOString().split('T')[0]
+        break
+      }
+      case '7days': {
+        const weekAgo = new Date(today)
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        startDate = weekAgo.toISOString().split('T')[0]
+        break
+      }
+      case '30days': {
+        const monthAgo = new Date(today)
+        monthAgo.setDate(monthAgo.getDate() - 30)
+        startDate = monthAgo.toISOString().split('T')[0]
+        break
+      }
+    }
+  }
+
+  let query = supabase
     .from('profiles')
     .select(
       `
@@ -167,7 +199,8 @@ export async function getDesignerStats() {
       full_name,
       submissions (
         id,
-        assets (id),
+        submission_date,
+        assets (id, asset_type),
         ratings (
           productivity,
           quality,
@@ -178,13 +211,16 @@ export async function getDesignerStats() {
     )
     .eq('role', 'designer')
 
+  const { data } = await query
+
   // Define types for the query result
   type DesignerWithSubmissions = {
     id: string
     full_name: string | null
     submissions: {
       id: string
-      assets: { id: string }[]
+      submission_date: string
+      assets: { id: string; asset_type: 'image' | 'video' }[]
       ratings: { productivity: number; quality: number; convertability: number }[]
     }[]
   }
@@ -192,12 +228,16 @@ export async function getDesignerStats() {
   const typedData = (data || []) as DesignerWithSubmissions[]
 
   return typedData.map((designer) => {
-    const submissions = designer.submissions || []
+    // Filter submissions by date range if applicable
+    let submissions = designer.submissions || []
+    if (startDate) {
+      submissions = submissions.filter((s) => s.submission_date >= startDate!)
+    }
+
     const allRatings = submissions.flatMap((s) => s.ratings || [])
-    const totalAssets = submissions.reduce(
-      (sum, s) => sum + (s.assets?.length || 0),
-      0
-    )
+    const allAssets = submissions.flatMap((s) => s.assets || [])
+    const staticAssets = allAssets.filter((a) => a.asset_type === 'image').length
+    const videoAssets = allAssets.filter((a) => a.asset_type === 'video').length
 
     const avgProductivity =
       allRatings.length > 0
@@ -216,7 +256,8 @@ export async function getDesignerStats() {
       id: designer.id,
       name: designer.full_name,
       totalSubmissions: submissions.length,
-      totalAssets,
+      staticAssets,
+      videoAssets,
       avgProductivity,
       avgQuality,
       avgConvertability,
