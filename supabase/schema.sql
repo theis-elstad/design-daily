@@ -142,7 +142,7 @@ BEGIN
     FROM public.profiles p
     LEFT JOIN public.submissions s ON s.user_id = p.id AND s.submission_date >= start_date AND s.submission_date <= end_date
     LEFT JOIN public.ratings r ON r.submission_id = s.id
-    WHERE p.role = 'designer'
+    WHERE p.role IN ('designer', 'admin')
     GROUP BY p.id, p.full_name
     HAVING COUNT(DISTINCT s.id) > 0
     ORDER BY avg_total_score DESC;

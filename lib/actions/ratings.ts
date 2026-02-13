@@ -50,7 +50,7 @@ export async function getSubmissionsForJudging(date?: string) {
     `
     )
     .order('submission_date', { ascending: false })
-    .limit(100)
+    .limit(500)
 
   // Only filter by date if one is provided
   if (date) {
@@ -347,7 +347,7 @@ export async function getDesignerSubmissionOverview(date: string) {
     supabase
       .from('profiles')
       .select('id, full_name')
-      .eq('role', 'designer')
+      .in('role', ['designer', 'admin'])
       .order('full_name'),
     supabase
       .from('submissions')

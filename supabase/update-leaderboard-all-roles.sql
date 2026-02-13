@@ -1,5 +1,6 @@
--- Update Leaderboard Function
--- Run this in your Supabase SQL Editor to update scoring (2 dimensions, 1-5 stars)
+-- Update Leaderboard Function to include all users (designers + admins)
+-- Run this in your Supabase SQL Editor to update the leaderboard function
+-- This replaces the previous version that only included users with role='designer'
 
 CREATE OR REPLACE FUNCTION public.get_leaderboard(time_range TEXT DEFAULT 'all')
 RETURNS TABLE (
@@ -54,5 +55,5 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Verify the function works
-SELECT 'Testing leaderboard function with updated scoring:' as info;
-SELECT * FROM public.get_leaderboard('week') LIMIT 3;
+SELECT 'Updated leaderboard function to include all roles (designer + admin):' as info;
+SELECT * FROM public.get_leaderboard('week') LIMIT 5;

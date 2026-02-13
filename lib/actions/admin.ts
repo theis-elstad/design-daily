@@ -19,7 +19,7 @@ export async function getAdminStats() {
     supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
-      .eq('role', 'designer'),
+      .in('role', ['designer', 'admin']),
     supabase.from('ratings').select('*', { count: 'exact', head: true }),
     supabase
       .from('submissions')
@@ -79,7 +79,7 @@ export async function getAllSubmissions(filters: {
     `
     )
     .order('submission_date', { ascending: false })
-    .limit(100)
+    .limit(500)
 
   if (filters.startDate) {
     query = query.gte('submission_date', filters.startDate)
@@ -144,7 +144,7 @@ export async function getDesigners() {
   const { data } = await supabase
     .from('profiles')
     .select('id, full_name, email')
-    .eq('role', 'designer')
+    .in('role', ['designer', 'admin'])
     .order('full_name')
 
   return data || []
@@ -202,7 +202,7 @@ export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all'
       )
     `
     )
-    .eq('role', 'designer')
+    .in('role', ['designer', 'admin'])
 
   const { data } = await query
 
