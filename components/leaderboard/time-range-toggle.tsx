@@ -7,16 +7,17 @@ export type TimeRange = 'today' | 'yesterday' | 'week' | 'month'
 
 interface TimeRangeToggleProps {
   currentRange: TimeRange
+  basePath?: string
 }
 
-export function TimeRangeToggle({ currentRange }: TimeRangeToggleProps) {
+export function TimeRangeToggle({ currentRange, basePath = '/leaderboard' }: TimeRangeToggleProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const handleChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('range', value)
-    router.push(`/leaderboard?${params.toString()}`)
+    router.push(`${basePath}?${params.toString()}`)
   }
 
   return (
