@@ -37,6 +37,7 @@ interface SubmissionDetailProps {
       storage_path: string
       file_name: string
     }[]
+    suggestedProductivity?: number
     allRatings?: {
       ratedBy: string
       productivity: number
@@ -86,7 +87,9 @@ export function SubmissionDetail({ submission }: SubmissionDetailProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">{submission.submitterName}</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {submission.status === 'needs_review' ? 'Anonymous Designer' : submission.submitterName}
+          </h2>
           <p className="text-gray-500 mt-1">{format(date, 'EEEE, MMM d, yyyy')}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -155,6 +158,7 @@ export function SubmissionDetail({ submission }: SubmissionDetailProps) {
           <RatingForm
             submissionId={submission.id}
             initialRating={submission.myRating}
+            suggestedProductivity={submission.suggestedProductivity}
             onRated={handleRated}
           />
 

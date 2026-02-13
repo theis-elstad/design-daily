@@ -42,3 +42,13 @@ CREATE POLICY "submissions_delete_own" ON storage.objects
         bucket_id = 'submissions'
         AND (storage.foldername(name))[1] = auth.uid()::text
     );
+
+-- Admins can delete any files
+CREATE POLICY "submissions_delete_admin" ON storage.objects
+    FOR DELETE USING (
+        bucket_id = 'submissions'
+        AND EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );

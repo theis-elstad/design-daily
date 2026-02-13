@@ -3,6 +3,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+function computeSuggestedProductivity(assetCount: number, medianAssetCount: number): number {
+  if (medianAssetCount === 0) return 3
+  const ratio = assetCount / medianAssetCount
+  if (ratio <= 0.6) return 1
+  if (ratio <= 0.8) return 2
+  if (ratio <= 1.0) return 3
+  if (ratio <= 1.2) return 4
+  return 5
+}
+
 export async function getSubmissionsForJudging(date?: string) {
   const supabase = await createClient()
   const {
@@ -21,7 +31,7 @@ export async function getSubmissionsForJudging(date?: string) {
       user_id,
       comment,
       updated_at,
-      profiles!inner (
+      profiles (
         full_name
       ),
       assets (
@@ -64,12 +74,17 @@ export async function getSubmissionsForJudging(date?: string) {
   const typedSubmissions = (submissions || []) as SubmissionForJudging[]
 
   // Determine status: needs_review, rated, or edited
+  // A submission is "rated" once ANY admin has rated it (not just the current user)
   return typedSubmissions.map((sub) => {
     const myRating = sub.ratings?.find((r) => r.rated_by === user.id)
+    const hasAnyRating = sub.ratings && sub.ratings.length > 0
 
     let status: 'needs_review' | 'rated' | 'edited' = 'needs_review'
-    if (myRating) {
-      if (sub.updated_at && new Date(sub.updated_at) > new Date(myRating.created_at)) {
+    if (hasAnyRating) {
+      const latestRating = sub.ratings.reduce((latest, r) =>
+        new Date(r.created_at) > new Date(latest.created_at) ? r : latest
+      )
+      if (sub.updated_at && new Date(sub.updated_at) > new Date(latestRating.created_at)) {
         status = 'edited'
       } else {
         status = 'rated'
@@ -108,7 +123,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
       user_id,
       comment,
       updated_at,
-      profiles!inner (
+      profiles (
         full_name
       ),
       assets (
@@ -147,15 +162,40 @@ export async function getSubmissionForJudgingById(submissionId: string) {
 
   const sub = data as SubmissionResult
   const myRating = sub.ratings?.find((r) => r.rated_by === user.id)
+  const hasAnyRating = sub.ratings && sub.ratings.length > 0
 
   let status: 'needs_review' | 'rated' | 'edited' = 'needs_review'
-  if (myRating) {
-    if (sub.updated_at && new Date(sub.updated_at) > new Date(myRating.created_at)) {
+  if (hasAnyRating) {
+    const latestRating = sub.ratings.reduce((latest, r) =>
+      new Date(r.created_at) > new Date(latest.created_at) ? r : latest
+    )
+    if (sub.updated_at && new Date(sub.updated_at) > new Date(latestRating.created_at)) {
       status = 'edited'
     } else {
       status = 'rated'
     }
   }
+
+  // Calculate suggested productivity based on median asset count for the day
+  const { data: daySubmissions } = await supabase
+    .from('submissions')
+    .select('id, assets(id)')
+    .eq('submission_date', sub.submission_date)
+
+  type DaySubmission = { id: string; assets: { id: string }[] }
+  const assetCounts = ((daySubmissions || []) as DaySubmission[])
+    .map((s) => s.assets?.length || 0)
+    .sort((a, b) => a - b)
+  const mid = Math.floor(assetCounts.length / 2)
+  const medianAssetCount =
+    assetCounts.length === 0
+      ? 0
+      : assetCounts.length % 2 !== 0
+        ? assetCounts[mid]
+        : (assetCounts[mid - 1] + assetCounts[mid]) / 2
+
+  const totalAssets = sub.assets?.length || 0
+  const suggestedProductivity = computeSuggestedProductivity(totalAssets, medianAssetCount)
 
   return {
     id: sub.id,
@@ -168,6 +208,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     assets: sub.assets || [],
     status,
     myRating: myRating || null,
+    suggestedProductivity,
     allRatings: (sub.ratings || []).map((r) => ({
       ratedBy: r.profiles?.full_name || 'Unknown',
       productivity: r.productivity,
@@ -247,10 +288,10 @@ export async function getJudgingStats(date?: string) {
   const { count: totalSubmissions } = await totalQuery
 
   // Build rated submissions query — include submission updated_at and rating created_at
+  // Count submissions rated by ANY admin, not just the current user
   let ratedQuery = supabase
     .from('ratings')
     .select('submission_id, created_at, submissions!inner(submission_date, updated_at)')
-    .eq('rated_by', user.id)
 
   if (date) {
     ratedQuery = ratedQuery.eq('submissions.submission_date', date)
@@ -266,16 +307,64 @@ export async function getJudgingStats(date?: string) {
 
   const typedRated = (ratedSubmissions || []) as unknown as RatedSubmission[]
 
-  // Only count as "rated" if the submission hasn't been edited after the rating
-  const fullyRatedCount = typedRated.filter((r) => {
-    const updatedAt = r.submissions?.updated_at
-    if (!updatedAt) return true
-    return new Date(updatedAt) <= new Date(r.created_at)
-  }).length
+  // Group ratings by submission_id to find the latest rating per submission
+  const ratingsBySubmission = new Map<string, RatedSubmission[]>()
+  for (const r of typedRated) {
+    const existing = ratingsBySubmission.get(r.submission_id) || []
+    existing.push(r)
+    ratingsBySubmission.set(r.submission_id, existing)
+  }
+
+  // A submission is "fully rated" if it has at least one rating
+  // and hasn't been edited after the latest rating
+  let fullyRatedCount = 0
+  for (const [, ratings] of ratingsBySubmission) {
+    const latestRating = ratings.reduce((latest, r) =>
+      new Date(r.created_at) > new Date(latest.created_at) ? r : latest
+    )
+    const updatedAt = latestRating.submissions?.updated_at
+    if (!updatedAt || new Date(updatedAt) <= new Date(latestRating.created_at)) {
+      fullyRatedCount++
+    }
+  }
 
   return {
     total: totalSubmissions || 0,
     rated: fullyRatedCount,
     remaining: (totalSubmissions || 0) - fullyRatedCount,
   }
+}
+
+export async function getDesignerSubmissionOverview(date: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return []
+
+  const [{ data: designers }, { data: submissions }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('role', 'designer')
+      .order('full_name'),
+    supabase
+      .from('submissions')
+      .select('user_id')
+      .eq('submission_date', date),
+  ])
+
+  type Designer = { id: string; full_name: string | null }
+  type Submission = { user_id: string }
+
+  const submittedUserIds = new Set(
+    ((submissions || []) as Submission[]).map((s) => s.user_id)
+  )
+
+  return ((designers || []) as Designer[]).map((d) => ({
+    id: d.id,
+    name: d.full_name || 'Unknown',
+    hasSubmitted: submittedUserIds.has(d.id),
+  }))
 }

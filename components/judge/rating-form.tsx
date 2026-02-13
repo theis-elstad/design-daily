@@ -15,16 +15,20 @@ interface RatingFormProps {
     productivity: number
     quality: number
   } | null
+  suggestedProductivity?: number
   onRated: () => void
 }
 
 export function RatingForm({
   submissionId,
   initialRating,
+  suggestedProductivity,
   onRated,
 }: RatingFormProps) {
   const router = useRouter()
-  const [productivity, setProductivity] = useState(initialRating?.productivity || 0)
+  const [productivity, setProductivity] = useState(
+    initialRating?.productivity || suggestedProductivity || 0
+  )
   const [quality, setQuality] = useState(initialRating?.quality || 0)
   const [isPending, setIsPending] = useState(false)
 
@@ -82,6 +86,11 @@ export function RatingForm({
             onChange={setProductivity}
             disabled={isPending}
           />
+          {!initialRating && suggestedProductivity && (
+            <p className="text-xs text-gray-400">
+              Pre-filled based on submission volume relative to daily median
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

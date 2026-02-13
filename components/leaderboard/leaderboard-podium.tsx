@@ -1,15 +1,18 @@
 'use client'
 
 import { useRef } from 'react'
+import { format } from 'date-fns'
 import { Trophy, Download, Medal } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn, getAvatarUrl } from '@/lib/utils'
 import type { LeaderboardEntry } from '@/lib/types/database'
+import type { TimeRange } from './time-range-toggle'
 
 interface LeaderboardPodiumProps {
   entries: LeaderboardEntry[]
   isAdmin: boolean
+  currentRange: TimeRange
 }
 
 function formatScore(score: number) {
@@ -23,6 +26,23 @@ function getInitials(name: string | null) {
     .map((n) => n[0])
     .join('')
     .toUpperCase()
+}
+
+function getRangeLabel(range: TimeRange): string {
+  const today = new Date()
+  switch (range) {
+    case 'today':
+      return format(today, 'MMMM d, yyyy')
+    case 'yesterday': {
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      return format(yesterday, 'MMMM d, yyyy')
+    }
+    case 'week':
+      return 'Last 7 Days'
+    case 'month':
+      return 'Last 30 Days'
+  }
 }
 
 function RankBadge({ rank }: { rank: number }) {
@@ -54,7 +74,7 @@ function RankBadge({ rank }: { rank: number }) {
   )
 }
 
-export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) {
+export function LeaderboardPodium({ entries, isAdmin, currentRange }: LeaderboardPodiumProps) {
   const listRef = useRef<HTMLDivElement>(null)
 
   const handleDownload = async () => {
@@ -102,6 +122,12 @@ export function LeaderboardPodium({ entries, isAdmin }: LeaderboardPodiumProps) 
         ref={listRef}
         className="bg-white rounded-lg overflow-hidden"
       >
+        {/* Banner */}
+        <div className="px-4 sm:px-6 py-4 bg-gray-900 text-white">
+          <h2 className="text-lg font-bold">Design Daily Leaderboard</h2>
+          <p className="text-sm text-gray-300">{getRangeLabel(currentRange)}</p>
+        </div>
+
         {/* Column headers */}
         <div className="flex items-center gap-4 px-4 sm:px-6 py-3 border-b bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wide">
           <div className="w-8 shrink-0" />

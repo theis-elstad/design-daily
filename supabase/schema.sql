@@ -175,6 +175,10 @@ CREATE POLICY "submissions_insert_own" ON public.submissions
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "submissions_update_own" ON public.submissions
     FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "submissions_delete_admin" ON public.submissions
+    FOR DELETE USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
 
 -- Assets: own + admin
 CREATE POLICY "assets_select_own" ON public.assets
@@ -197,6 +201,10 @@ CREATE POLICY "assets_delete_own" ON public.assets
             AND user_id = auth.uid()
             AND submission_date = CURRENT_DATE
         )
+    );
+CREATE POLICY "assets_delete_admin" ON public.assets
+    FOR DELETE USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
 
 -- Ratings: admin only

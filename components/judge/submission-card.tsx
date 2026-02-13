@@ -49,7 +49,7 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3 mb-1">
               <span className="font-medium text-gray-900 truncate">
-                {submission.submitterName}
+                {submission.status === 'needs_review' ? 'Anonymous Designer' : submission.submitterName}
               </span>
               <StatusBadge status={submission.status} />
             </div>

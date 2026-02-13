@@ -66,7 +66,7 @@ async function LeaderboardData({
     return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null }
   })
 
-  return <LeaderboardPodium entries={leaderboardWithTrends} isAdmin={isAdmin} />
+  return <LeaderboardPodium entries={leaderboardWithTrends} isAdmin={isAdmin} currentRange={range} />
 }
 
 function LeaderboardSkeleton() {

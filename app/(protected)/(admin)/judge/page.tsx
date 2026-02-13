@@ -1,8 +1,9 @@
 export const runtime = 'edge'
 
-import { getSubmissionsForJudging, getJudgingStats } from '@/lib/actions/ratings'
+import { getSubmissionsForJudging, getJudgingStats, getDesignerSubmissionOverview } from '@/lib/actions/ratings'
 import { JudgeSubmissionList } from '@/components/judge/judge-submission-list'
 import { DatePicker } from '@/components/judge/date-picker'
+import { DesignerOverview } from '@/components/judge/designer-overview'
 
 interface JudgePageProps {
   searchParams: Promise<{ date?: string; tab?: string }>
@@ -13,9 +14,10 @@ export default async function JudgePage({ searchParams }: JudgePageProps) {
   const date = params.date // undefined means "all dates"
   const tab = params.tab || 'review'
 
-  const [submissions, stats] = await Promise.all([
+  const [submissions, stats, designerOverview] = await Promise.all([
     getSubmissionsForJudging(date),
     getJudgingStats(date),
+    date ? getDesignerSubmissionOverview(date) : Promise.resolve(null),
   ])
 
   return (
@@ -29,6 +31,12 @@ export default async function JudgePage({ searchParams }: JudgePageProps) {
         </div>
         <DatePicker currentDate={date} />
       </div>
+
+      {designerOverview && (
+        <div className="mb-6">
+          <DesignerOverview designers={designerOverview} />
+        </div>
+      )}
 
       <JudgeSubmissionList
         submissions={submissions}
