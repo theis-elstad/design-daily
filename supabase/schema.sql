@@ -131,9 +131,9 @@ BEGIN
             END;
             end_date := start_date;
         WHEN 'weekly' THEN
-            -- Thursday-to-Wednesday cycle
-            -- Find the most recent Thursday, then apply week_offset
-            start_date := CURRENT_DATE - ((EXTRACT(DOW FROM CURRENT_DATE)::INT - 4 + 7) % 7) + (week_offset * 7);
+            -- Friday-to-Thursday cycle
+            -- Find the most recent Friday, then apply week_offset
+            start_date := CURRENT_DATE - ((EXTRACT(DOW FROM CURRENT_DATE)::INT - 5 + 7) % 7) + (week_offset * 7);
             end_date := start_date + 6;
             -- Cap end_date to today if in the future
             IF end_date > CURRENT_DATE THEN

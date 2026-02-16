@@ -12,13 +12,13 @@ interface WeekNavigatorProps {
 function getWeekLabel(weekOffset: number): string {
   const today = new Date()
   const dow = today.getDay()
-  const daysSinceThursday = ((dow - 4) + 7) % 7
-  const thursday = new Date(today)
-  thursday.setDate(thursday.getDate() - daysSinceThursday + (weekOffset * 7))
-  const wednesday = new Date(thursday)
-  wednesday.setDate(wednesday.getDate() + 6)
-  const endDate = wednesday > today ? today : wednesday
-  return `${format(thursday, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}`
+  const daysSinceFriday = ((dow - 5) + 7) % 7
+  const friday = new Date(today)
+  friday.setDate(friday.getDate() - daysSinceFriday + (weekOffset * 7))
+  const thursday = new Date(friday)
+  thursday.setDate(thursday.getDate() + 6)
+  const endDate = thursday > today ? today : thursday
+  return `${format(friday, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}`
 }
 
 export function WeekNavigator({ weekOffset }: WeekNavigatorProps) {

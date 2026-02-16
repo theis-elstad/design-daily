@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { format } from 'date-fns'
-import { Trophy, Download, Medal } from 'lucide-react'
+import { Trophy, Download, Medal, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn, getAvatarUrl } from '@/lib/utils'
@@ -42,13 +42,13 @@ function getLastBusinessDay(): Date {
   return d
 }
 
-function getWeeklyThursday(weekOffset: number = 0): Date {
+function getWeeklyFriday(weekOffset: number = 0): Date {
   const today = new Date()
   const dow = today.getDay()
-  const daysSinceThursday = ((dow - 4) + 7) % 7
-  const thursday = new Date(today)
-  thursday.setDate(thursday.getDate() - daysSinceThursday + (weekOffset * 7))
-  return thursday
+  const daysSinceFriday = ((dow - 5) + 7) % 7
+  const friday = new Date(today)
+  friday.setDate(friday.getDate() - daysSinceFriday + (weekOffset * 7))
+  return friday
 }
 
 function getRangeLabel(range: TimeRange, weekOffset: number = 0): string {
@@ -64,11 +64,11 @@ function getRangeLabel(range: TimeRange, weekOffset: number = 0): string {
     case 'last_business_day':
       return format(getLastBusinessDay(), 'MMMM d, yyyy')
     case 'weekly': {
-      const thursday = getWeeklyThursday(weekOffset)
-      const wednesday = new Date(thursday)
-      wednesday.setDate(wednesday.getDate() + 6)
-      const endDate = wednesday > today ? today : wednesday
-      return `${format(thursday, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}`
+      const friday = getWeeklyFriday(weekOffset)
+      const thursday = new Date(friday)
+      thursday.setDate(thursday.getDate() + 6)
+      const endDate = thursday > today ? today : thursday
+      return `${format(friday, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}`
     }
     case 'week':
       return 'Last 7 Days'
@@ -166,11 +166,17 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
           <div className="w-8 shrink-0" />
           <div className="w-9 shrink-0" />
           <div className="flex-1 min-w-0">Name</div>
+          {showCumulative && (
+            <div className="w-16 text-center shrink-0">Change</div>
+          )}
           <div className="w-20 text-right shrink-0">Productivity</div>
           <div className="w-20 text-right shrink-0">Quality</div>
           <div className="w-20 text-right shrink-0">Avg Total</div>
           {showCumulative && (
             <div className="w-24 text-right shrink-0">Cumulative</div>
+          )}
+          {showCumulative && (
+            <div className="w-16 text-right shrink-0">Added</div>
           )}
         </div>
 
@@ -216,6 +222,29 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                   </p>
                 </div>
 
+                {/* Rank Change (weekly only) */}
+                {showCumulative && (
+                  <div className="w-16 text-center shrink-0">
+                    {entry.rank_change !== undefined && entry.rank_change !== 0 ? (
+                      <span className={cn(
+                        'inline-flex items-center gap-0.5 text-xs font-medium',
+                        entry.rank_change > 0 ? 'text-green-600' : 'text-red-600'
+                      )}>
+                        {entry.rank_change > 0 ? (
+                          <TrendingUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <TrendingDown className="h-3.5 w-3.5" />
+                        )}
+                        {entry.rank_change > 0 ? `+${entry.rank_change}` : entry.rank_change}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">
+                        <Minus className="h-3.5 w-3.5 inline" />
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Productivity */}
                 <div className="w-20 text-right shrink-0">
                   <span className="text-gray-600">{formatScore(entry.avg_productivity)}</span>
@@ -243,6 +272,15 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                   <div className="w-24 text-right shrink-0">
                     <span className="text-gray-600 font-semibold">
                       {formatScore(entry.cumulative_total_score || 0)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Added (weekly only - last business day score) */}
+                {showCumulative && (
+                  <div className="w-16 text-right shrink-0">
+                    <span className="text-gray-400 text-sm">
+                      {entry.last_day_added ? `+${formatScore(entry.last_day_added)}` : '–'}
                     </span>
                   </div>
                 )}
