@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { toast } from 'sonner'
-import { CheckCircle, Loader2, Save } from 'lucide-react'
+import { CheckCircle, Loader2, Save, CalendarOff } from 'lucide-react'
 import { ImageDropzone } from './image-dropzone'
 import { ExistingAssets } from './existing-assets'
 import { createSubmission, updateComment } from '@/lib/actions/submissions'
@@ -19,6 +19,7 @@ interface SubmissionFormProps {
   existingComment?: string | null
   submissionId?: string | null
   selectedDate: string
+  isWeekend?: boolean
 }
 
 export function SubmissionForm({
@@ -28,6 +29,7 @@ export function SubmissionForm({
   existingComment: initialComment,
   submissionId: initialSubmissionId,
   selectedDate,
+  isWeekend = false,
 }: SubmissionFormProps) {
   const [hasSubmitted, setHasSubmitted] = useState(initialHasSubmitted)
   const [existingAssets, setExistingAssets] = useState(initialExistingAssets)
@@ -86,6 +88,22 @@ export function SubmissionForm({
   }
 
   const isToday = selectedDate === new Date().toISOString().split('T')[0]
+
+  if (isWeekend) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center text-center gap-3">
+            <CalendarOff className="h-12 w-12 text-gray-300" />
+            <h3 className="text-lg font-semibold text-gray-900">No Weekend Submissions</h3>
+            <p className="text-gray-500 text-sm max-w-sm">
+              Submissions are only accepted on weekdays (Monday–Friday). Please select a weekday to submit your work.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>

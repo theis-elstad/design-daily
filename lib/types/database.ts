@@ -124,6 +124,7 @@ export type Database = {
       get_leaderboard: {
         Args: {
           time_range?: string
+          week_offset?: number
         }
         Returns: {
           user_id: string
@@ -132,6 +133,7 @@ export type Database = {
           avg_total_score: number
           avg_productivity: number
           avg_quality: number
+          cumulative_total_score: number
           rank: number
         }[]
       }
@@ -165,6 +167,7 @@ export type LeaderboardEntry = {
   avg_total_score: number
   avg_productivity: number
   avg_quality: number
+  cumulative_total_score?: number
   rank: number
   trend?: 'up' | 'down' | 'same'
 }

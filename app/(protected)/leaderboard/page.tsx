@@ -4,27 +4,35 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { LeaderboardPodium } from '@/components/leaderboard/leaderboard-podium'
 import { TimeRangeToggle, type TimeRange } from '@/components/leaderboard/time-range-toggle'
+import { WeekNavigator } from '@/components/leaderboard/week-navigator'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { LeaderboardEntry } from '@/lib/types/database'
 
 interface LeaderboardPageProps {
-  searchParams: Promise<{ range?: TimeRange }>
+  searchParams: Promise<{ range?: TimeRange; week_offset?: string }>
 }
 
 async function LeaderboardData({
   range,
   isAdmin,
+  weekOffset,
 }: {
   range: TimeRange
   isAdmin: boolean
+  weekOffset: number
 }) {
   const supabase = await createClient()
 
+  // Build RPC params
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rpcParams: any = { time_range: range }
+  if (range === 'weekly') {
+    rpcParams.week_offset = weekOffset
+  }
+
   // Get current period leaderboard
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: currentLeaderboard } = await (supabase.rpc as any)('get_leaderboard', {
-    time_range: range,
-  })
+  const { data: currentLeaderboard } = await (supabase.rpc as any)('get_leaderboard', rpcParams)
 
   // Get previous period for trend calculation (only for longer ranges)
   let previousLeaderboard = null
@@ -66,7 +74,14 @@ async function LeaderboardData({
     return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null }
   })
 
-  return <LeaderboardPodium entries={leaderboardWithTrends} isAdmin={isAdmin} currentRange={range} />
+  return (
+    <LeaderboardPodium
+      entries={leaderboardWithTrends}
+      isAdmin={isAdmin}
+      currentRange={range}
+      weekOffset={weekOffset}
+    />
+  )
 }
 
 function LeaderboardSkeleton() {
@@ -92,6 +107,7 @@ function LeaderboardSkeleton() {
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const params = await searchParams
   const range = params.range || 'week'
+  const weekOffset = params.week_offset ? parseInt(params.week_offset, 10) : 0
 
   // Check if user is admin (for download button)
   const supabase = await createClient()
@@ -122,10 +138,13 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           </div>
           <TimeRangeToggle currentRange={range} />
         </div>
+        {range === 'weekly' && (
+          <WeekNavigator weekOffset={weekOffset} />
+        )}
       </div>
 
       <Suspense fallback={<LeaderboardSkeleton />}>
-        <LeaderboardData range={range} isAdmin={isAdmin} />
+        <LeaderboardData range={range} isAdmin={isAdmin} weekOffset={weekOffset} />
       </Suspense>
     </div>
   )

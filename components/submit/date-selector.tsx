@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { format, subDays, isToday, parseISO } from 'date-fns'
+import { format, subDays, isToday, parseISO, isWeekend } from 'date-fns'
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,8 @@ export function DateSelector({ currentDate, maxDaysBack = 7 }: DateSelectorProps
   const dates = Array.from({ length: maxDaysBack + 1 }, (_, i) => subDays(today, i))
 
   const handleDateChange = (date: Date) => {
+    if (isWeekend(date)) return
+
     const dateStr = format(date, 'yyyy-MM-dd')
     const params = new URLSearchParams(searchParams.toString())
 
@@ -37,20 +39,41 @@ export function DateSelector({ currentDate, maxDaysBack = 7 }: DateSelectorProps
     router.push(`/submit${queryString ? `?${queryString}` : ''}`)
   }
 
-  const canGoNewer = !isToday(selectedDate)
-  const canGoOlder = dates.some((d) => d < selectedDate)
+  // Check if there's a weekday in the newer direction
+  const canGoNewer = (() => {
+    const currentIndex = dates.findIndex((d) => format(d, 'yyyy-MM-dd') === currentDate)
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (!isWeekend(dates[i])) return true
+    }
+    return false
+  })()
+
+  // Check if there's a weekday in the older direction
+  const canGoOlder = (() => {
+    const currentIndex = dates.findIndex((d) => format(d, 'yyyy-MM-dd') === currentDate)
+    for (let i = currentIndex + 1; i < dates.length; i++) {
+      if (!isWeekend(dates[i])) return true
+    }
+    return false
+  })()
 
   const goNewer = () => {
     const currentIndex = dates.findIndex((d) => format(d, 'yyyy-MM-dd') === currentDate)
-    if (currentIndex > 0) {
-      handleDateChange(dates[currentIndex - 1])
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (!isWeekend(dates[i])) {
+        handleDateChange(dates[i])
+        return
+      }
     }
   }
 
   const goOlder = () => {
     const currentIndex = dates.findIndex((d) => format(d, 'yyyy-MM-dd') === currentDate)
-    if (currentIndex < dates.length - 1) {
-      handleDateChange(dates[currentIndex + 1])
+    for (let i = currentIndex + 1; i < dates.length; i++) {
+      if (!isWeekend(dates[i])) {
+        handleDateChange(dates[i])
+        return
+      }
     }
   }
 
@@ -94,16 +117,20 @@ export function DateSelector({ currentDate, maxDaysBack = 7 }: DateSelectorProps
           const dateStr = format(date, 'yyyy-MM-dd')
           const isSelected = dateStr === currentDate
           const dayIsToday = isToday(date)
+          const isDisabled = isWeekend(date)
 
           return (
             <button
               key={dateStr}
               onClick={() => handleDateChange(date)}
+              disabled={isDisabled}
               className={cn(
                 'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
-                isSelected
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                isDisabled
+                  ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                  : isSelected
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               )}
             >
               {dayIsToday ? 'Today' : format(date, 'EEE d')}

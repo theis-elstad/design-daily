@@ -1,8 +1,11 @@
--- Update Leaderboard Function to include all users (designers + admins)
+-- Update Leaderboard Function to support new time ranges and cumulative scores
 -- Run this in your Supabase SQL Editor to update the leaderboard function
--- This replaces the previous version that only included users with role='designer'
+-- Adds: last_business_day, weekly (Thu-to-Thu), cumulative_total_score, week_offset param
 
-CREATE OR REPLACE FUNCTION public.get_leaderboard(time_range TEXT DEFAULT 'all')
+-- Drop the old single-parameter version to avoid overload ambiguity
+DROP FUNCTION IF EXISTS public.get_leaderboard(TEXT);
+
+CREATE OR REPLACE FUNCTION public.get_leaderboard(time_range TEXT DEFAULT 'all', week_offset INT DEFAULT 0)
 RETURNS TABLE (
     user_id UUID,
     full_name TEXT,
@@ -10,6 +13,7 @@ RETURNS TABLE (
     avg_total_score NUMERIC,
     avg_productivity NUMERIC,
     avg_quality NUMERIC,
+    cumulative_total_score NUMERIC,
     rank BIGINT
 ) AS $$
 DECLARE
@@ -24,6 +28,24 @@ BEGIN
         WHEN 'yesterday' THEN
             start_date := CURRENT_DATE - INTERVAL '1 day';
             end_date := CURRENT_DATE - INTERVAL '1 day';
+        WHEN 'last_business_day' THEN
+            -- dow: 0=Sunday, 1=Monday, 2=Tuesday, ..., 6=Saturday
+            start_date := CASE EXTRACT(DOW FROM CURRENT_DATE)::INT
+                WHEN 0 THEN CURRENT_DATE - 2  -- Sunday -> Friday
+                WHEN 1 THEN CURRENT_DATE - 3  -- Monday -> Friday
+                WHEN 6 THEN CURRENT_DATE - 1  -- Saturday -> Friday
+                ELSE CURRENT_DATE - 1         -- Tue-Fri -> previous day
+            END;
+            end_date := start_date;
+        WHEN 'weekly' THEN
+            -- Thursday-to-Wednesday cycle
+            -- Find the most recent Thursday, then apply week_offset
+            start_date := CURRENT_DATE - ((EXTRACT(DOW FROM CURRENT_DATE)::INT - 4 + 7) % 7) + (week_offset * 7);
+            end_date := start_date + 6;
+            -- Cap end_date to today if in the future
+            IF end_date > CURRENT_DATE THEN
+                end_date := CURRENT_DATE;
+            END IF;
         WHEN 'week' THEN
             start_date := CURRENT_DATE - INTERVAL '7 days';
             end_date := CURRENT_DATE;
@@ -43,6 +65,7 @@ BEGIN
         ROUND(COALESCE(AVG(r.productivity + r.quality), 0), 2),
         ROUND(COALESCE(AVG(r.productivity), 0), 2),
         ROUND(COALESCE(AVG(r.quality), 0), 2),
+        ROUND(COALESCE(SUM(r.productivity + r.quality), 0), 2),
         DENSE_RANK() OVER (ORDER BY COALESCE(AVG(r.productivity + r.quality), 0) DESC)::BIGINT
     FROM public.profiles p
     LEFT JOIN public.submissions s ON s.user_id = p.id AND s.submission_date >= start_date AND s.submission_date <= end_date
@@ -55,5 +78,5 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Verify the function works
-SELECT 'Updated leaderboard function to include all roles (designer + admin):' as info;
-SELECT * FROM public.get_leaderboard('week') LIMIT 5;
+SELECT 'Updated leaderboard function with new time ranges:' as info;
+SELECT * FROM public.get_leaderboard('weekly'::TEXT, 0) LIMIT 5;

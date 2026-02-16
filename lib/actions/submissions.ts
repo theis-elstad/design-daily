@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { isVideoFile } from '@/lib/utils'
+import { isVideoFile, isWeekendDate } from '@/lib/utils'
 
 // Helper to get server's current date (UTC)
 function getServerDate(): string {
@@ -82,6 +82,11 @@ export async function createSubmission(assetPaths: string[], targetDate?: string
   // Validate date is within allowed range
   if (targetDate && !isDateInRange(targetDate)) {
     return { error: 'Cannot submit for dates more than 7 days ago or in the future' }
+  }
+
+  // Block weekend submissions
+  if (isWeekendDate(date)) {
+    return { error: 'Submissions are only accepted on weekdays (Monday–Friday)' }
   }
 
   // Trim comment, treat empty string as null

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { getCurrentUser } from '@/lib/actions/auth'
 import { checkSubmission } from '@/lib/actions/submissions'
+import { isWeekendDate } from '@/lib/utils'
 import { SubmissionForm } from '@/components/submit/submission-form'
 import { DateSelector } from '@/components/submit/date-selector'
 
@@ -20,6 +21,7 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
 
   const params = await searchParams
   const { hasSubmitted, existingAssets, existingComment, currentDate, submissionId } = await checkSubmission(params.date)
+  const weekend = isWeekendDate(currentDate)
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -46,6 +48,7 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
         existingComment={existingComment}
         submissionId={submissionId}
         selectedDate={currentDate}
+        isWeekend={weekend}
       />
     </div>
   )

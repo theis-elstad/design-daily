@@ -13,6 +13,7 @@ interface LeaderboardPodiumProps {
   entries: LeaderboardEntry[]
   isAdmin: boolean
   currentRange: TimeRange
+  weekOffset?: number
 }
 
 function formatScore(score: number) {
@@ -28,7 +29,29 @@ function getInitials(name: string | null) {
     .toUpperCase()
 }
 
-function getRangeLabel(range: TimeRange): string {
+function getLastBusinessDay(): Date {
+  const today = new Date()
+  const dow = today.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+  let offset: number
+  if (dow === 0) offset = 2       // Sunday -> Friday
+  else if (dow === 1) offset = 3  // Monday -> Friday
+  else if (dow === 6) offset = 1  // Saturday -> Friday
+  else offset = 1                 // Tue-Fri -> previous day
+  const d = new Date(today)
+  d.setDate(d.getDate() - offset)
+  return d
+}
+
+function getWeeklyThursday(weekOffset: number = 0): Date {
+  const today = new Date()
+  const dow = today.getDay()
+  const daysSinceThursday = ((dow - 4) + 7) % 7
+  const thursday = new Date(today)
+  thursday.setDate(thursday.getDate() - daysSinceThursday + (weekOffset * 7))
+  return thursday
+}
+
+function getRangeLabel(range: TimeRange, weekOffset: number = 0): string {
   const today = new Date()
   switch (range) {
     case 'today':
@@ -37,6 +60,15 @@ function getRangeLabel(range: TimeRange): string {
       const yesterday = new Date(today)
       yesterday.setDate(yesterday.getDate() - 1)
       return format(yesterday, 'MMMM d, yyyy')
+    }
+    case 'last_business_day':
+      return format(getLastBusinessDay(), 'MMMM d, yyyy')
+    case 'weekly': {
+      const thursday = getWeeklyThursday(weekOffset)
+      const wednesday = new Date(thursday)
+      wednesday.setDate(wednesday.getDate() + 6)
+      const endDate = wednesday > today ? today : wednesday
+      return `${format(thursday, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}`
     }
     case 'week':
       return 'Last 7 Days'
@@ -74,8 +106,9 @@ function RankBadge({ rank }: { rank: number }) {
   )
 }
 
-export function LeaderboardPodium({ entries, isAdmin, currentRange }: LeaderboardPodiumProps) {
+export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset = 0 }: LeaderboardPodiumProps) {
   const listRef = useRef<HTMLDivElement>(null)
+  const showCumulative = currentRange === 'weekly'
 
   const handleDownload = async () => {
     if (!listRef.current) return
@@ -125,7 +158,7 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange }: Leaderboar
         {/* Banner */}
         <div className="px-4 sm:px-6 py-4 bg-gray-900 text-white">
           <h2 className="text-lg font-bold">Design Daily Leaderboard</h2>
-          <p className="text-sm text-gray-300">{getRangeLabel(currentRange)}</p>
+          <p className="text-sm text-gray-300">{getRangeLabel(currentRange, weekOffset)}</p>
         </div>
 
         {/* Column headers */}
@@ -135,7 +168,10 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange }: Leaderboar
           <div className="flex-1 min-w-0">Name</div>
           <div className="w-20 text-right shrink-0">Productivity</div>
           <div className="w-20 text-right shrink-0">Quality</div>
-          <div className="w-20 text-right shrink-0">Total</div>
+          <div className="w-20 text-right shrink-0">Avg Total</div>
+          {showCumulative && (
+            <div className="w-24 text-right shrink-0">Cumulative</div>
+          )}
         </div>
 
         {/* Entries */}
@@ -201,6 +237,15 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange }: Leaderboar
                     {formatScore(entry.avg_total_score)}
                   </span>
                 </div>
+
+                {/* Cumulative (weekly only) */}
+                {showCumulative && (
+                  <div className="w-24 text-right shrink-0">
+                    <span className="text-gray-600 font-semibold">
+                      {formatScore(entry.cumulative_total_score || 0)}
+                    </span>
+                  </div>
+                )}
               </div>
             )
           })}
