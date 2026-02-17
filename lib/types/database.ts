@@ -170,6 +170,6 @@ export type LeaderboardEntry = {
   cumulative_total_score?: number
   rank: number
   trend?: 'up' | 'down' | 'same'
-  rank_change?: number
+  avg_score_delta?: number
   last_day_added?: number
 }

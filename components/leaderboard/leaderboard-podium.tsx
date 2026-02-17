@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { format } from 'date-fns'
-import { Trophy, Download, Medal, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Trophy, Download, Medal } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn, getAvatarUrl } from '@/lib/utils'
@@ -166,12 +166,12 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
           <div className="w-8 shrink-0" />
           <div className="w-9 shrink-0" />
           <div className="flex-1 min-w-0">Name</div>
-          {showCumulative && (
-            <div className="w-16 text-center shrink-0">Change</div>
-          )}
           <div className="w-20 text-right shrink-0">Productivity</div>
           <div className="w-20 text-right shrink-0">Quality</div>
           <div className="w-20 text-right shrink-0">Avg Total</div>
+          {showCumulative && (
+            <div className="w-14 text-right shrink-0">Δ</div>
+          )}
           {showCumulative && (
             <div className="w-24 text-right shrink-0">Cumulative</div>
           )}
@@ -222,29 +222,6 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                   </p>
                 </div>
 
-                {/* Rank Change (weekly only) */}
-                {showCumulative && (
-                  <div className="w-16 text-center shrink-0">
-                    {entry.rank_change !== undefined && entry.rank_change !== 0 ? (
-                      <span className={cn(
-                        'inline-flex items-center gap-0.5 text-xs font-medium',
-                        entry.rank_change > 0 ? 'text-green-600' : 'text-red-600'
-                      )}>
-                        {entry.rank_change > 0 ? (
-                          <TrendingUp className="h-3.5 w-3.5" />
-                        ) : (
-                          <TrendingDown className="h-3.5 w-3.5" />
-                        )}
-                        {entry.rank_change > 0 ? `+${entry.rank_change}` : entry.rank_change}
-                      </span>
-                    ) : (
-                      <span className="text-gray-300">
-                        <Minus className="h-3.5 w-3.5 inline" />
-                      </span>
-                    )}
-                  </div>
-                )}
-
                 {/* Productivity */}
                 <div className="w-20 text-right shrink-0">
                   <span className="text-gray-600">{formatScore(entry.avg_productivity)}</span>
@@ -267,6 +244,24 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                   </span>
                 </div>
 
+                {/* Avg Score Delta (weekly only) */}
+                {showCumulative && (
+                  <div className="w-14 text-right shrink-0">
+                    {entry.avg_score_delta !== undefined ? (
+                      <span className={cn(
+                        'text-sm font-medium',
+                        entry.avg_score_delta > 0 && 'text-green-600',
+                        entry.avg_score_delta === 0 && 'text-gray-500',
+                        entry.avg_score_delta < 0 && 'text-red-600',
+                      )}>
+                        {entry.avg_score_delta > 0 ? '+' : ''}{formatScore(entry.avg_score_delta)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">–</span>
+                    )}
+                  </div>
+                )}
+
                 {/* Cumulative (weekly only) */}
                 {showCumulative && (
                   <div className="w-24 text-right shrink-0">
@@ -279,7 +274,7 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                 {/* Added (weekly only - last business day score) */}
                 {showCumulative && (
                   <div className="w-16 text-right shrink-0">
-                    <span className="text-gray-400 text-sm">
+                    <span className="text-gray-700 font-medium text-sm">
                       {entry.last_day_added ? `+${formatScore(entry.last_day_added)}` : '–'}
                     </span>
                   </div>

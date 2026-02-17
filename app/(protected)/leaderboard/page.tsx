@@ -45,22 +45,14 @@ async function LeaderboardData({
     previousLeaderboard = data
   }
 
-  // For weekly view: fetch previous week rankings (for rank change) and last business day scores (for "Added")
-  let previousWeekLeaderboard = null
+  // For weekly view: fetch last business day scores (for "Added" column)
   let lastBizDayLeaderboard = null
   if (range === 'weekly') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [prevWeekRes, lastBizRes] = await Promise.all([
-      (supabase.rpc as any)('get_leaderboard', {
-        time_range: 'weekly',
-        week_offset: weekOffset - 1,
-      }),
-      (supabase.rpc as any)('get_leaderboard', {
-        time_range: 'last_business_day',
-      }),
-    ])
-    previousWeekLeaderboard = prevWeekRes.data
-    lastBizDayLeaderboard = lastBizRes.data
+    const { data } = await (supabase.rpc as any)('get_leaderboard', {
+      time_range: 'last_business_day',
+    })
+    lastBizDayLeaderboard = data
   }
 
   // Fetch avatar paths for all users in the leaderboard
@@ -75,10 +67,9 @@ async function LeaderboardData({
   )
 
   // Type the raw data
-  type RawLeaderboardEntry = Omit<LeaderboardEntry, 'trend' | 'avatar_path' | 'rank_change' | 'last_day_added'>
+  type RawLeaderboardEntry = Omit<LeaderboardEntry, 'trend' | 'avatar_path' | 'avg_score_delta' | 'last_day_added'>
   const current: RawLeaderboardEntry[] = currentLeaderboard || []
   const previous: RawLeaderboardEntry[] = previousLeaderboard || []
-  const prevWeek: RawLeaderboardEntry[] = previousWeekLeaderboard || []
   const lastBizDay: RawLeaderboardEntry[] = lastBizDayLeaderboard || []
 
   // Calculate trends by comparing ranks and add avatar paths
@@ -91,15 +82,6 @@ async function LeaderboardData({
       else if (entry.rank > previousEntry.rank) trend = 'down'
     }
 
-    // Rank change: compare with previous week (weekly view only)
-    let rank_change: number | undefined
-    if (range === 'weekly') {
-      const prevWeekEntry = prevWeek.find((p) => p.user_id === entry.user_id)
-      if (prevWeekEntry) {
-        rank_change = prevWeekEntry.rank - entry.rank // positive = moved up
-      }
-    }
-
     // Last day added: cumulative_total_score from last_business_day (single day = total for that day)
     let last_day_added: number | undefined
     if (range === 'weekly') {
@@ -109,7 +91,16 @@ async function LeaderboardData({
       }
     }
 
-    return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null, rank_change, last_day_added }
+    // Avg score delta: how avg_total_score changed after last submission
+    // previous_avg = (cumulative - last_day_added) / (submissions - 1)
+    // delta = current_avg - previous_avg
+    let avg_score_delta: number | undefined
+    if (range === 'weekly' && last_day_added && entry.cumulative_total_score && entry.total_submissions > 1) {
+      const previousAvg = (entry.cumulative_total_score - last_day_added) / (entry.total_submissions - 1)
+      avg_score_delta = Math.round((entry.avg_total_score - previousAvg) * 10) / 10
+    }
+
+    return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null, avg_score_delta, last_day_added }
   })
 
   return (
