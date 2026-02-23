@@ -153,24 +153,45 @@ BEGIN
     END CASE;
 
     RETURN QUERY
+    WITH submission_scores AS (
+        -- Get one score per submission (avoid duplication from assets join)
+        SELECT
+            s.id AS submission_id,
+            s.user_id,
+            r.productivity,
+            r.quality
+        FROM public.submissions s
+        JOIN public.ratings r ON r.submission_id = s.id
+        WHERE s.submission_date >= start_date AND s.submission_date <= end_date
+    ),
+    asset_counts AS (
+        -- Get asset counts per user for the date range
+        SELECT
+            s.user_id,
+            COUNT(DISTINCT CASE WHEN a.asset_type = 'image' THEN a.id END)::BIGINT AS statics,
+            COUNT(DISTINCT CASE WHEN a.asset_type = 'video' THEN a.id END)::BIGINT AS videos
+        FROM public.submissions s
+        LEFT JOIN public.assets a ON a.submission_id = s.id
+        WHERE s.submission_date >= start_date AND s.submission_date <= end_date
+        GROUP BY s.user_id
+    )
     SELECT
         p.id,
         p.full_name,
-        COUNT(DISTINCT s.id)::BIGINT,
-        ROUND(COALESCE(AVG(r.productivity + r.quality), 0), 2),
-        ROUND(COALESCE(AVG(r.productivity), 0), 2),
-        ROUND(COALESCE(AVG(r.quality), 0), 2),
-        ROUND(COALESCE(SUM(r.productivity + r.quality), 0), 2),
-        DENSE_RANK() OVER (ORDER BY COALESCE(AVG(r.productivity + r.quality), 0) DESC)::BIGINT,
-        COUNT(DISTINCT CASE WHEN a.asset_type = 'image' THEN a.id END)::BIGINT,
-        COUNT(DISTINCT CASE WHEN a.asset_type = 'video' THEN a.id END)::BIGINT
+        COUNT(DISTINCT ss.submission_id)::BIGINT,
+        ROUND(COALESCE(AVG(ss.productivity + ss.quality), 0), 2),
+        ROUND(COALESCE(AVG(ss.productivity), 0), 2),
+        ROUND(COALESCE(AVG(ss.quality), 0), 2),
+        ROUND(COALESCE(SUM(ss.productivity + ss.quality), 0), 2),
+        DENSE_RANK() OVER (ORDER BY COALESCE(AVG(ss.productivity + ss.quality), 0) DESC)::BIGINT,
+        COALESCE(ac.statics, 0)::BIGINT,
+        COALESCE(ac.videos, 0)::BIGINT
     FROM public.profiles p
-    LEFT JOIN public.submissions s ON s.user_id = p.id AND s.submission_date >= start_date AND s.submission_date <= end_date
-    LEFT JOIN public.ratings r ON r.submission_id = s.id
-    LEFT JOIN public.assets a ON a.submission_id = s.id
+    LEFT JOIN submission_scores ss ON ss.user_id = p.id
+    LEFT JOIN asset_counts ac ON ac.user_id = p.id
     WHERE p.role IN ('designer', 'admin')
-    GROUP BY p.id, p.full_name
-    HAVING COUNT(DISTINCT s.id) > 0
+    GROUP BY p.id, p.full_name, ac.statics, ac.videos
+    HAVING COUNT(DISTINCT ss.submission_id) > 0
     ORDER BY avg_total_score DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
