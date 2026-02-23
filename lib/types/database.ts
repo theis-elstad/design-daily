@@ -172,4 +172,8 @@ export type LeaderboardEntry = {
   trend?: 'up' | 'down' | 'same'
   avg_score_delta?: number
   last_day_added?: number
+  static_count?: number
+  video_count?: number
+  daily_static_count?: number
+  daily_video_count?: number
 }

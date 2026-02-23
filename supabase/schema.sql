@@ -107,7 +107,9 @@ RETURNS TABLE (
     avg_productivity NUMERIC,
     avg_quality NUMERIC,
     cumulative_total_score NUMERIC,
-    rank BIGINT
+    rank BIGINT,
+    static_count BIGINT,
+    video_count BIGINT
 ) AS $$
 DECLARE
     start_date DATE;
@@ -159,10 +161,13 @@ BEGIN
         ROUND(COALESCE(AVG(r.productivity), 0), 2),
         ROUND(COALESCE(AVG(r.quality), 0), 2),
         ROUND(COALESCE(SUM(r.productivity + r.quality), 0), 2),
-        DENSE_RANK() OVER (ORDER BY COALESCE(AVG(r.productivity + r.quality), 0) DESC)::BIGINT
+        DENSE_RANK() OVER (ORDER BY COALESCE(AVG(r.productivity + r.quality), 0) DESC)::BIGINT,
+        COUNT(DISTINCT CASE WHEN a.asset_type = 'image' THEN a.id END)::BIGINT,
+        COUNT(DISTINCT CASE WHEN a.asset_type = 'video' THEN a.id END)::BIGINT
     FROM public.profiles p
     LEFT JOIN public.submissions s ON s.user_id = p.id AND s.submission_date >= start_date AND s.submission_date <= end_date
     LEFT JOIN public.ratings r ON r.submission_id = s.id
+    LEFT JOIN public.assets a ON a.submission_id = s.id
     WHERE p.role IN ('designer', 'admin')
     GROUP BY p.id, p.full_name
     HAVING COUNT(DISTINCT s.id) > 0

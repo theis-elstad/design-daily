@@ -84,10 +84,14 @@ async function LeaderboardData({
 
     // Last day added: cumulative_total_score from last_business_day (single day = total for that day)
     let last_day_added: number | undefined
+    let daily_static_count: number | undefined
+    let daily_video_count: number | undefined
     if (range === 'weekly') {
       const lastDayEntry = lastBizDay.find((p) => p.user_id === entry.user_id)
       if (lastDayEntry) {
         last_day_added = lastDayEntry.cumulative_total_score
+        daily_static_count = lastDayEntry.static_count
+        daily_video_count = lastDayEntry.video_count
       }
     }
 
@@ -100,7 +104,7 @@ async function LeaderboardData({
       avg_score_delta = Math.round((entry.avg_total_score - previousAvg) * 10) / 10
     }
 
-    return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null, avg_score_delta, last_day_added }
+    return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null, avg_score_delta, last_day_added, daily_static_count, daily_video_count }
   })
 
   return (
@@ -135,7 +139,7 @@ function LeaderboardSkeleton() {
 
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const params = await searchParams
-  const range = params.range || 'week'
+  const range = params.range || 'weekly'
   const weekOffset = params.week_offset ? parseInt(params.week_offset, 10) : 0
 
   // Check if user is admin (for download button)
@@ -165,7 +169,14 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               See how designers rank based on their submissions
             </p>
           </div>
-          <TimeRangeToggle currentRange={range} />
+          <TimeRangeToggle
+            currentRange={range}
+            options={[
+              { value: 'weekly', label: 'Weekly' },
+              { value: 'last_business_day', label: 'Last Biz Day' },
+              { value: 'all', label: 'Total' },
+            ]}
+          />
         </div>
         {range === 'weekly' && (
           <WeekNavigator weekOffset={weekOffset} />

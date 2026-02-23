@@ -150,13 +150,14 @@ export async function getDesigners() {
   return data || []
 }
 
-export type DesignerStatsTimeRange = 'today' | 'yesterday' | '7days' | '30days' | 'all'
+export type DesignerStatsTimeRange = 'today' | 'yesterday' | 'last_business_day' | '7days' | '30days' | 'all'
 
 export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all') {
   const supabase = await createClient()
 
   // Build the date filter
   let startDate: string | null = null
+  let endDate: string | null = null
   if (timeRange !== 'all') {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -168,6 +169,18 @@ export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all'
         const yesterday = new Date(today)
         yesterday.setDate(yesterday.getDate() - 1)
         startDate = yesterday.toISOString().split('T')[0]
+        endDate = startDate
+        break
+      }
+      case 'last_business_day': {
+        const dow = today.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+        const lbd = new Date(today)
+        if (dow === 0) lbd.setDate(lbd.getDate() - 2)       // Sunday -> Friday
+        else if (dow === 1) lbd.setDate(lbd.getDate() - 3)  // Monday -> Friday
+        else if (dow === 6) lbd.setDate(lbd.getDate() - 1)  // Saturday -> Friday
+        else lbd.setDate(lbd.getDate() - 1)                 // Tue-Fri -> previous day
+        startDate = lbd.toISOString().split('T')[0]
+        endDate = startDate
         break
       }
       case '7days': {
@@ -225,6 +238,9 @@ export async function getDesignerStats(timeRange: DesignerStatsTimeRange = 'all'
     let submissions = designer.submissions || []
     if (startDate) {
       submissions = submissions.filter((s) => s.submission_date >= startDate!)
+    }
+    if (endDate) {
+      submissions = submissions.filter((s) => s.submission_date <= endDate!)
     }
 
     const allRatings = submissions.flatMap((s) => s.ratings || [])

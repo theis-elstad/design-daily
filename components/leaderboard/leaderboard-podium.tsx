@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef } from 'react'
-import { format } from 'date-fns'
-import { Trophy, Download, Medal } from 'lucide-react'
+import { format, getISOWeek } from 'date-fns'
+import { Trophy, Download, Medal, Image, Video } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn, getAvatarUrl } from '@/lib/utils'
@@ -51,6 +51,22 @@ function getWeeklyFriday(weekOffset: number = 0): Date {
   return friday
 }
 
+function getWeeklyDayNumber(): number {
+  // Day 1 = Friday, Day 2 = Monday, Day 3 = Tuesday, Day 4 = Wednesday, Day 5 = Thursday
+  // Weekend days (Sat/Sun) show as Day 1 still (last business day was Friday)
+  const dow = new Date().getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+  const dayMap: Record<number, number> = {
+    5: 1, // Friday
+    6: 1, // Saturday (still day 1)
+    0: 1, // Sunday (still day 1)
+    1: 2, // Monday
+    2: 3, // Tuesday
+    3: 4, // Wednesday
+    4: 5, // Thursday
+  }
+  return dayMap[dow]
+}
+
 function getRangeLabel(range: TimeRange, weekOffset: number = 0): string {
   const today = new Date()
   switch (range) {
@@ -67,13 +83,23 @@ function getRangeLabel(range: TimeRange, weekOffset: number = 0): string {
       const friday = getWeeklyFriday(weekOffset)
       const thursday = new Date(friday)
       thursday.setDate(thursday.getDate() + 6)
-      const endDate = thursday > today ? today : thursday
-      return `${format(friday, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}`
+      // Week number is based on the Thursday (end of cycle)
+      const weekNum = getISOWeek(thursday)
+      // Always show full Fri-Thu range
+      const sameMonth = friday.getMonth() === thursday.getMonth()
+      const dateRange = sameMonth
+        ? `${format(friday, 'MMM d')} - ${format(thursday, 'd')}`
+        : `${format(friday, 'MMM d')} - ${format(thursday, 'MMM d')}`
+      // Day number (only for current week)
+      const dayStr = weekOffset === 0 ? ` - Day ${getWeeklyDayNumber()}/5` : ''
+      return `Week ${weekNum} (${dateRange})${dayStr}`
     }
     case 'week':
       return 'Last 7 Days'
     case 'month':
       return 'Last 30 Days'
+    case 'all':
+      return 'All Time'
   }
 }
 
@@ -161,6 +187,33 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
           <p className="text-sm text-gray-300">{getRangeLabel(currentRange, weekOffset)}</p>
         </div>
 
+        {/* Group headers (weekly only) */}
+        {showCumulative && (
+          <div className="flex items-center px-4 sm:px-6 pt-3 pb-0 bg-gray-50">
+            {/* Spacer for rank + avatar + name */}
+            <div className="w-8 shrink-0" />
+            <div className="w-9 shrink-0 ml-4" />
+            <div className="flex-1 min-w-0 ml-4" />
+            {/* Weekly group label - spans Productivity, Quality, Avg Total, Cumulative */}
+            <div className="flex items-center gap-4">
+              <div className="w-20 shrink-0" />
+              <div className="w-20 shrink-0" />
+              <div className="w-20 shrink-0" />
+              <div className="w-24 shrink-0 text-center">
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Weekly</span>
+              </div>
+            </div>
+            {/* Daily group label - spans Statics, Video, Added */}
+            <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-amber-300">
+              <div className="w-14 shrink-0" />
+              <div className="w-14 shrink-0" />
+              <div className="w-16 shrink-0 text-center">
+                <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Daily</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Column headers */}
         <div className="flex items-center gap-4 px-4 sm:px-6 py-3 border-b bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wide">
           <div className="w-8 shrink-0" />
@@ -170,13 +223,25 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
           <div className="w-20 text-right shrink-0">Quality</div>
           <div className="w-20 text-right shrink-0">Avg Total</div>
           {showCumulative && (
-            <div className="w-14 text-right shrink-0">Δ</div>
-          )}
-          {showCumulative && (
-            <div className="w-24 text-right shrink-0">Cumulative</div>
-          )}
-          {showCumulative && (
-            <div className="w-16 text-right shrink-0">Added</div>
+            <>
+              <div className="w-24 text-right shrink-0">Cumulative</div>
+              {/* Daily columns - visually distinct */}
+              <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-amber-300">
+                <div className="w-14 text-right shrink-0 text-amber-700">
+                  <div className="flex items-center justify-end gap-1">
+                    <Image className="h-3 w-3" />
+                    <span>Statics</span>
+                  </div>
+                </div>
+                <div className="w-14 text-right shrink-0 text-amber-700">
+                  <div className="flex items-center justify-end gap-1">
+                    <Video className="h-3 w-3" />
+                    <span>Video</span>
+                  </div>
+                </div>
+                <div className="w-16 text-right shrink-0 text-amber-700">Added</div>
+              </div>
+            </>
           )}
         </div>
 
@@ -244,40 +309,35 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                   </span>
                 </div>
 
-                {/* Avg Score Delta (weekly only) */}
                 {showCumulative && (
-                  <div className="w-14 text-right shrink-0">
-                    {entry.avg_score_delta !== undefined ? (
-                      <span className={cn(
-                        'text-sm font-medium',
-                        entry.avg_score_delta > 0 && 'text-green-600',
-                        entry.avg_score_delta === 0 && 'text-gray-500',
-                        entry.avg_score_delta < 0 && 'text-red-600',
-                      )}>
-                        {entry.avg_score_delta > 0 ? '+' : ''}{formatScore(entry.avg_score_delta)}
+                  <>
+                    {/* Cumulative (weekly) */}
+                    <div className="w-24 text-right shrink-0">
+                      <span className="text-gray-600 font-semibold">
+                        {formatScore(entry.cumulative_total_score || 0)}
                       </span>
-                    ) : (
-                      <span className="text-gray-300">–</span>
-                    )}
-                  </div>
-                )}
+                    </div>
 
-                {/* Cumulative (weekly only) */}
-                {showCumulative && (
-                  <div className="w-24 text-right shrink-0">
-                    <span className="text-gray-600 font-semibold">
-                      {formatScore(entry.cumulative_total_score || 0)}
-                    </span>
-                  </div>
-                )}
+                    {/* Daily group - visually distinct */}
+                    <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-amber-300">
+                      {/* Statics (last biz day) */}
+                      <div className="w-14 text-right shrink-0">
+                        <span className="text-amber-800 text-sm">{entry.daily_static_count || 0}</span>
+                      </div>
 
-                {/* Added (weekly only - last business day score) */}
-                {showCumulative && (
-                  <div className="w-16 text-right shrink-0">
-                    <span className="text-gray-700 font-medium text-sm">
-                      {entry.last_day_added ? `+${formatScore(entry.last_day_added)}` : '–'}
-                    </span>
-                  </div>
+                      {/* Video (last biz day) */}
+                      <div className="w-14 text-right shrink-0">
+                        <span className="text-amber-800 text-sm">{entry.daily_video_count || 0}</span>
+                      </div>
+
+                      {/* Added (last biz day score) */}
+                      <div className="w-16 text-right shrink-0">
+                        <span className="text-amber-700 font-medium text-sm">
+                          {entry.last_day_added ? `+${formatScore(entry.last_day_added)}` : '–'}
+                        </span>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )

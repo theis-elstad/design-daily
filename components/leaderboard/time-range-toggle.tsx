@@ -3,14 +3,26 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-export type TimeRange = 'today' | 'yesterday' | 'last_business_day' | 'weekly' | 'week' | 'month'
+export type TimeRange = 'today' | 'yesterday' | 'last_business_day' | 'weekly' | 'week' | 'month' | 'all'
+
+type TimeRangeOption = { value: TimeRange; label: string }
+
+const defaultOptions: TimeRangeOption[] = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'last_business_day', label: 'Last Biz Day' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'week', label: 'Last 7 Days' },
+  { value: 'month', label: 'Last 30 Days' },
+]
 
 interface TimeRangeToggleProps {
   currentRange: TimeRange
   basePath?: string
+  options?: TimeRangeOption[]
 }
 
-export function TimeRangeToggle({ currentRange, basePath = '/leaderboard' }: TimeRangeToggleProps) {
+export function TimeRangeToggle({ currentRange, basePath = '/leaderboard', options = defaultOptions }: TimeRangeToggleProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -23,12 +35,9 @@ export function TimeRangeToggle({ currentRange, basePath = '/leaderboard' }: Tim
   return (
     <Tabs value={currentRange} onValueChange={handleChange}>
       <TabsList>
-        <TabsTrigger value="today">Today</TabsTrigger>
-        <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
-        <TabsTrigger value="last_business_day">Last Biz Day</TabsTrigger>
-        <TabsTrigger value="weekly">Weekly</TabsTrigger>
-        <TabsTrigger value="week">Last 7 Days</TabsTrigger>
-        <TabsTrigger value="month">Last 30 Days</TabsTrigger>
+        {options.map((opt) => (
+          <TabsTrigger key={opt.value} value={opt.value}>{opt.label}</TabsTrigger>
+        ))}
       </TabsList>
     </Tabs>
   )

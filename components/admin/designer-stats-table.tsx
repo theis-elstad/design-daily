@@ -36,6 +36,7 @@ type SortDirection = 'asc' | 'desc'
 const timeRangeOptions: { value: DesignerStatsTimeRange; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
+  { value: 'last_business_day', label: 'Last Biz Day' },
   { value: '7days', label: '7 Days' },
   { value: '30days', label: '30 Days' },
   { value: 'all', label: 'All Time' },
