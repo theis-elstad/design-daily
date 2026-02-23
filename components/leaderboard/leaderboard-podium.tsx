@@ -52,17 +52,18 @@ function getWeeklyFriday(weekOffset: number = 0): Date {
 }
 
 function getWeeklyDayNumber(): number {
-  // Day 1 = Friday, Day 2 = Monday, Day 3 = Tuesday, Day 4 = Wednesday, Day 5 = Thursday
-  // Weekend days (Sat/Sun) show as Day 1 still (last business day was Friday)
+  // Display as a normal Mon-Fri work week to spectators
+  // Mon = Day 1, Tue = Day 2, Wed = Day 3, Thu = Day 4, Fri = Day 5
+  // Sat/Sun show Day 5 (week complete)
   const dow = new Date().getDay() // 0=Sun, 1=Mon, ..., 6=Sat
   const dayMap: Record<number, number> = {
-    5: 1, // Friday
-    6: 1, // Saturday (still day 1)
-    0: 1, // Sunday (still day 1)
-    1: 2, // Monday
-    2: 3, // Tuesday
-    3: 4, // Wednesday
-    4: 5, // Thursday
+    1: 1, // Monday -> Day 1
+    2: 2, // Tuesday -> Day 2
+    3: 3, // Wednesday -> Day 3
+    4: 4, // Thursday -> Day 4
+    5: 5, // Friday -> Day 5
+    6: 5, // Saturday -> Day 5 (week complete)
+    0: 5, // Sunday -> Day 5 (week complete)
   }
   return dayMap[dow]
 }
@@ -189,20 +190,18 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
 
         {/* Group headers (weekly only) */}
         {showCumulative && (
-          <div className="flex items-center px-4 sm:px-6 pt-3 pb-0 bg-gray-50">
-            {/* Spacer for rank + avatar + name */}
+          <div className="flex items-center gap-4 px-4 sm:px-6 pt-3 pb-0 bg-gray-50">
+            {/* Spacer for rank + avatar + name (matches column header row) */}
             <div className="w-8 shrink-0" />
-            <div className="w-9 shrink-0 ml-4" />
-            <div className="flex-1 min-w-0 ml-4" />
-            {/* Daily group label - spans Statics, Video, Productivity, Quality, Added */}
-            <div className="flex items-center gap-4">
-              <div className="w-14 shrink-0" />
-              <div className="w-14 shrink-0" />
-              <div className="w-20 shrink-0" />
-              <div className="w-20 shrink-0" />
-              <div className="w-16 shrink-0 text-center">
-                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Daily</span>
-              </div>
+            <div className="w-9 shrink-0" />
+            <div className="flex-1 min-w-0" />
+            {/* Daily spacers + label (matches Statics, Video, Productivity, Quality, Added) */}
+            <div className="w-14 shrink-0" />
+            <div className="w-14 shrink-0" />
+            <div className="w-20 shrink-0" />
+            <div className="w-20 shrink-0" />
+            <div className="w-16 shrink-0 text-center">
+              <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Daily</span>
             </div>
             {/* Weekly group label - spans Total, Average */}
             <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-gray-300">

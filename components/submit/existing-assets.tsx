@@ -22,7 +22,14 @@ export function ExistingAssets({ assets: initialAssets }: ExistingAssetsProps) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
   const supabase = createClient()
 
-  // Generate signed URLs for all assets on mount
+  // Sync local state when parent passes new assets (e.g. date change)
+  useEffect(() => {
+    setAssets(initialAssets)
+    setSignedUrls({})
+    setPreviewIndex(null)
+  }, [initialAssets])
+
+  // Generate signed URLs for all assets
   useEffect(() => {
     async function getSignedUrls() {
       const urls: Record<string, string> = {}
@@ -65,7 +72,7 @@ export function ExistingAssets({ assets: initialAssets }: ExistingAssetsProps) {
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-gray-700">
-        Today&apos;s submissions ({assets.length})
+        Submissions ({assets.length})
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {assets.map((asset, index) => {
