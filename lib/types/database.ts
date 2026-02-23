@@ -176,4 +176,7 @@ export type LeaderboardEntry = {
   video_count?: number
   daily_static_count?: number
   daily_video_count?: number
+  daily_avg_productivity?: number
+  daily_avg_quality?: number
+  daily_avg_total?: number
 }

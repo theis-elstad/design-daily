@@ -82,16 +82,22 @@ async function LeaderboardData({
       else if (entry.rank > previousEntry.rank) trend = 'down'
     }
 
-    // Last day added: cumulative_total_score from last_business_day (single day = total for that day)
+    // Last biz day data: daily scores and asset counts
     let last_day_added: number | undefined
     let daily_static_count: number | undefined
     let daily_video_count: number | undefined
+    let daily_avg_productivity: number | undefined
+    let daily_avg_quality: number | undefined
+    let daily_avg_total: number | undefined
     if (range === 'weekly') {
       const lastDayEntry = lastBizDay.find((p) => p.user_id === entry.user_id)
       if (lastDayEntry) {
-        last_day_added = lastDayEntry.cumulative_total_score
+        last_day_added = lastDayEntry.avg_total_score
         daily_static_count = lastDayEntry.static_count
         daily_video_count = lastDayEntry.video_count
+        daily_avg_productivity = lastDayEntry.avg_productivity
+        daily_avg_quality = lastDayEntry.avg_quality
+        daily_avg_total = lastDayEntry.avg_total_score
       }
     }
 
@@ -104,7 +110,7 @@ async function LeaderboardData({
       avg_score_delta = Math.round((entry.avg_total_score - previousAvg) * 10) / 10
     }
 
-    return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null, avg_score_delta, last_day_added, daily_static_count, daily_video_count }
+    return { ...entry, trend, avatar_path: avatarMap.get(entry.user_id) || null, avg_score_delta, last_day_added, daily_static_count, daily_video_count, daily_avg_productivity, daily_avg_quality, daily_avg_total }
   })
 
   return (

@@ -194,21 +194,21 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
             <div className="w-8 shrink-0" />
             <div className="w-9 shrink-0 ml-4" />
             <div className="flex-1 min-w-0 ml-4" />
-            {/* Weekly group label - spans Productivity, Quality, Avg Total, Cumulative */}
+            {/* Daily group label - spans Statics, Video, Productivity, Quality, Added */}
             <div className="flex items-center gap-4">
-              <div className="w-20 shrink-0" />
-              <div className="w-20 shrink-0" />
-              <div className="w-20 shrink-0" />
-              <div className="w-24 shrink-0 text-center">
-                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Weekly</span>
-              </div>
-            </div>
-            {/* Daily group label - spans Statics, Video, Added */}
-            <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-amber-300">
               <div className="w-14 shrink-0" />
               <div className="w-14 shrink-0" />
+              <div className="w-20 shrink-0" />
+              <div className="w-20 shrink-0" />
               <div className="w-16 shrink-0 text-center">
                 <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Daily</span>
+              </div>
+            </div>
+            {/* Weekly group label - spans Cumulative, Avg Total */}
+            <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-gray-300">
+              <div className="w-24 shrink-0" />
+              <div className="w-20 shrink-0 text-center">
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Weekly</span>
               </div>
             </div>
           </div>
@@ -219,28 +219,35 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
           <div className="w-8 shrink-0" />
           <div className="w-9 shrink-0" />
           <div className="flex-1 min-w-0">Name</div>
-          <div className="w-20 text-right shrink-0">Productivity</div>
-          <div className="w-20 text-right shrink-0">Quality</div>
-          <div className="w-20 text-right shrink-0">Avg Total</div>
-          {showCumulative && (
+          {showCumulative ? (
             <>
-              <div className="w-24 text-right shrink-0">Cumulative</div>
-              {/* Daily columns - visually distinct */}
-              <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-amber-300">
-                <div className="w-14 text-right shrink-0 text-amber-700">
-                  <div className="flex items-center justify-end gap-1">
-                    <Image className="h-3 w-3" />
-                    <span>Statics</span>
-                  </div>
+              {/* Daily columns */}
+              <div className="w-14 text-right shrink-0 text-amber-700">
+                <div className="flex items-center justify-end gap-1">
+                  <Image className="h-3 w-3" />
+                  <span>Statics</span>
                 </div>
-                <div className="w-14 text-right shrink-0 text-amber-700">
-                  <div className="flex items-center justify-end gap-1">
-                    <Video className="h-3 w-3" />
-                    <span>Video</span>
-                  </div>
-                </div>
-                <div className="w-16 text-right shrink-0 text-amber-700">Added</div>
               </div>
+              <div className="w-14 text-right shrink-0 text-amber-700">
+                <div className="flex items-center justify-end gap-1">
+                  <Video className="h-3 w-3" />
+                  <span>Video</span>
+                </div>
+              </div>
+              <div className="w-20 text-right shrink-0 text-amber-700">Productivity</div>
+              <div className="w-20 text-right shrink-0 text-amber-700">Quality</div>
+              <div className="w-16 text-right shrink-0 text-amber-700">Added</div>
+              {/* Weekly columns */}
+              <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-gray-300">
+                <div className="w-24 text-right shrink-0">Cumulative</div>
+                <div className="w-20 text-right shrink-0">Avg Total</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-20 text-right shrink-0">Productivity</div>
+              <div className="w-20 text-right shrink-0">Quality</div>
+              <div className="w-20 text-right shrink-0">Avg Total</div>
             </>
           )}
         </div>
@@ -287,55 +294,76 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                   </p>
                 </div>
 
-                {/* Productivity */}
-                <div className="w-20 text-right shrink-0">
-                  <span className="text-gray-600">{formatScore(entry.avg_productivity)}</span>
-                </div>
-
-                {/* Quality */}
-                <div className="w-20 text-right shrink-0">
-                  <span className="text-gray-600">{formatScore(entry.avg_quality)}</span>
-                </div>
-
-                {/* Total */}
-                <div className="w-20 text-right shrink-0">
-                  <span className={cn(
-                    'font-bold text-lg',
-                    entry.rank === 1 && 'text-yellow-600',
-                    entry.rank === 2 && 'text-gray-600',
-                    entry.rank === 3 && 'text-orange-600',
-                  )}>
-                    {formatScore(entry.avg_total_score)}
-                  </span>
-                </div>
-
-                {showCumulative && (
+                {showCumulative ? (
                   <>
-                    {/* Cumulative (weekly) */}
-                    <div className="w-24 text-right shrink-0">
-                      <span className="text-gray-600 font-semibold">
-                        {formatScore(entry.cumulative_total_score || 0)}
+                    {/* Daily group */}
+                    {/* Statics (last biz day) */}
+                    <div className="w-14 text-right shrink-0">
+                      <span className="text-amber-800 text-sm">{entry.daily_static_count || 0}</span>
+                    </div>
+
+                    {/* Video (last biz day) */}
+                    <div className="w-14 text-right shrink-0">
+                      <span className="text-amber-800 text-sm">{entry.daily_video_count || 0}</span>
+                    </div>
+
+                    {/* Productivity (last biz day) */}
+                    <div className="w-20 text-right shrink-0">
+                      <span className="text-amber-800">{entry.daily_avg_productivity != null ? formatScore(entry.daily_avg_productivity) : '–'}</span>
+                    </div>
+
+                    {/* Quality (last biz day) */}
+                    <div className="w-20 text-right shrink-0">
+                      <span className="text-amber-800">{entry.daily_avg_quality != null ? formatScore(entry.daily_avg_quality) : '–'}</span>
+                    </div>
+
+                    {/* Added (last biz day avg total score) */}
+                    <div className="w-16 text-right shrink-0">
+                      <span className="text-amber-700 font-medium text-sm">
+                        {entry.last_day_added ? `+${formatScore(entry.last_day_added)}` : '–'}
                       </span>
                     </div>
 
-                    {/* Daily group - visually distinct */}
-                    <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-amber-300">
-                      {/* Statics (last biz day) */}
-                      <div className="w-14 text-right shrink-0">
-                        <span className="text-amber-800 text-sm">{entry.daily_static_count || 0}</span>
-                      </div>
-
-                      {/* Video (last biz day) */}
-                      <div className="w-14 text-right shrink-0">
-                        <span className="text-amber-800 text-sm">{entry.daily_video_count || 0}</span>
-                      </div>
-
-                      {/* Added (last biz day score) */}
-                      <div className="w-16 text-right shrink-0">
-                        <span className="text-amber-700 font-medium text-sm">
-                          {entry.last_day_added ? `+${formatScore(entry.last_day_added)}` : '–'}
+                    {/* Weekly group */}
+                    <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-gray-300">
+                      {/* Cumulative (weekly total) */}
+                      <div className="w-24 text-right shrink-0">
+                        <span className="text-gray-600 font-semibold">
+                          {formatScore(entry.cumulative_total_score || 0)}
                         </span>
                       </div>
+
+                      {/* Avg Total (weekly average) */}
+                      <div className="w-20 text-right shrink-0">
+                        <span className={cn(
+                          'font-bold text-lg',
+                          entry.rank === 1 && 'text-yellow-600',
+                          entry.rank === 2 && 'text-gray-600',
+                          entry.rank === 3 && 'text-orange-600',
+                        )}>
+                          {formatScore(entry.avg_total_score)}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Non-weekly: simple layout */}
+                    <div className="w-20 text-right shrink-0">
+                      <span className="text-gray-600">{formatScore(entry.avg_productivity)}</span>
+                    </div>
+                    <div className="w-20 text-right shrink-0">
+                      <span className="text-gray-600">{formatScore(entry.avg_quality)}</span>
+                    </div>
+                    <div className="w-20 text-right shrink-0">
+                      <span className={cn(
+                        'font-bold text-lg',
+                        entry.rank === 1 && 'text-yellow-600',
+                        entry.rank === 2 && 'text-gray-600',
+                        entry.rank === 3 && 'text-orange-600',
+                      )}>
+                        {formatScore(entry.avg_total_score)}
+                      </span>
                     </div>
                   </>
                 )}
