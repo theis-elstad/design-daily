@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useCallback } from 'react'
 import { format, getISOWeek } from 'date-fns'
-import { Trophy, Download, Medal, Image } from 'lucide-react'
+import { Trophy, Download, Medal, Image, EyeOff } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn, getAvatarUrl } from '@/lib/utils'
@@ -157,6 +157,44 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
     }
   }
 
+  const handleAnonymousDownload = useCallback(async () => {
+    if (!listRef.current) return
+
+    // Find all entry rows and blur the bottom half
+    const rows = listRef.current.querySelectorAll<HTMLElement>('[data-rank]')
+    const totalRows = rows.length
+    const blurFrom = Math.ceil(totalRows / 2)
+    const blurred: { el: HTMLElement; prev: string }[] = []
+
+    rows.forEach((row, index) => {
+      if (index >= blurFrom) {
+        blurred.push({ el: row, prev: row.style.filter })
+        row.style.filter = 'blur(6px)'
+      }
+    })
+
+    try {
+      const htmlToImage = await import('html-to-image')
+
+      const dataUrl = await htmlToImage.toPng(listRef.current, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+      })
+
+      const link = document.createElement('a')
+      link.download = `leaderboard-anon-${new Date().toISOString().split('T')[0]}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (error) {
+      console.error('Failed to download anonymous leaderboard image:', error)
+    } finally {
+      // Restore original styles
+      blurred.forEach(({ el, prev }) => {
+        el.style.filter = prev
+      })
+    }
+  }, [])
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -170,7 +208,12 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
   return (
     <div className="space-y-6">
       {isAdmin && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {showCumulative && (
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleAnonymousDownload} title="Download with non-podium rows blurred">
+              <EyeOff className="h-4 w-4" />
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleDownload}>
             <Download className="h-4 w-4 mr-2" />
             Download
@@ -255,6 +298,7 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
             return (
               <div
                 key={entry.user_id}
+                data-rank={entry.rank}
                 className={cn(
                   'flex items-center gap-4 px-4 sm:px-6 py-3',
                   isTopThree && 'bg-gray-50/50'

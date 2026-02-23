@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { useDropzone } from 'react-dropzone'
+import { useDropzone, type FileRejection } from 'react-dropzone'
 import { Upload, X, Loader2, Play } from 'lucide-react'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -54,7 +55,9 @@ export function ImageDropzone({
           .from('submissions')
           .upload(filePath, file)
 
-        if (!error) {
+        if (error) {
+          toast.error(`Failed to upload ${file.name}: ${error.message}`)
+        } else {
           const previewUrl = URL.createObjectURL(file)
           const isVideo = file.type.startsWith('video/')
           newFiles.push({
@@ -90,12 +93,29 @@ export function ImageDropzone({
     setUploadedFiles([])
   }
 
+  const onDropRejected = useCallback((rejections: FileRejection[]) => {
+    rejections.forEach(({ file, errors }) => {
+      const isTooLarge = errors.some((e) => e.code === 'file-too-large')
+      if (isTooLarge) {
+        toast.error(`${file.name} exceeds the 50MB limit. Please create a lower quality version for upload.`)
+        return
+      }
+      const reasons = errors.map((e) => {
+        if (e.code === 'file-invalid-type') return 'Unsupported file type'
+        return e.message
+      }).join(', ')
+      toast.error(`${file.name}: ${reasons}`)
+    })
+  }, [])
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
       'video/*': ['.mp4', '.webm', '.mov'],
     },
+    maxSize: 50 * 1024 * 1024, // 50MB limit (Supabase free tier)
     disabled: disabled || uploading,
   })
 
