@@ -1,7 +1,3 @@
--- Update Leaderboard Function to support new time ranges and cumulative scores
--- Run this in your Supabase SQL Editor to update the leaderboard function
--- Adds: last_business_day, weekly (Thu-to-Thu), cumulative_total_score, week_offset param
-
 -- Drop all existing versions of the function to allow return type change
 DROP FUNCTION IF EXISTS public.get_leaderboard(TEXT);
 DROP FUNCTION IF EXISTS public.get_leaderboard(TEXT, INT);
@@ -82,7 +78,3 @@ BEGIN
     ORDER BY avg_total_score DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Verify the function works
-SELECT 'Updated leaderboard function with new time ranges:' as info;
-SELECT * FROM public.get_leaderboard('weekly'::TEXT, 0) LIMIT 5;
