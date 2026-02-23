@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { format, getISOWeek } from 'date-fns'
-import { Trophy, Download, Medal, Image, Video } from 'lucide-react'
+import { Trophy, Download, Medal, Image } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn, getAvatarUrl } from '@/lib/utils'
@@ -200,15 +200,15 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
               <div className="w-14 shrink-0" />
               <div className="w-20 shrink-0" />
               <div className="w-20 shrink-0" />
-              <div className="w-16 shrink-0 text-center">
-                <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Daily</span>
+              <div className="w-16 shrink-0 text-left">
+                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Daily</span>
               </div>
             </div>
-            {/* Weekly group label - spans Cumulative, Avg Total */}
+            {/* Weekly group label - spans Total, Average */}
             <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-gray-300">
               <div className="w-24 shrink-0" />
-              <div className="w-20 shrink-0 text-center">
-                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Weekly</span>
+              <div className="w-20 shrink-0 text-left">
+                <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">Weekly</span>
               </div>
             </div>
           </div>
@@ -222,25 +222,20 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
           {showCumulative ? (
             <>
               {/* Daily columns */}
-              <div className="w-14 text-right shrink-0">
-                <div className="flex items-center justify-end gap-1">
+              <div className="w-14 text-left shrink-0">
+                <div className="flex items-center gap-1">
                   <Image className="h-3 w-3" />
                   <span>Statics</span>
                 </div>
               </div>
-              <div className="w-14 text-right shrink-0">
-                <div className="flex items-center justify-end gap-1">
-                  <Video className="h-3 w-3" />
-                  <span>Video</span>
-                </div>
-              </div>
-              <div className="w-20 text-right shrink-0">Productivity</div>
-              <div className="w-20 text-right shrink-0">Quality</div>
-              <div className="w-16 text-right shrink-0">Added</div>
+              <div className="w-14 text-left shrink-0">Video</div>
+              <div className="w-20 text-left shrink-0">Productivity</div>
+              <div className="w-20 text-left shrink-0">Quality</div>
+              <div className="w-16 text-left shrink-0">Added</div>
               {/* Weekly columns */}
               <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-gray-300">
-                <div className="w-24 text-right shrink-0">Cumulative</div>
-                <div className="w-20 text-right shrink-0">Avg Total</div>
+                <div className="w-24 text-left shrink-0">Total</div>
+                <div className="w-20 text-left shrink-0">Average</div>
               </div>
             </>
           ) : (
@@ -298,27 +293,27 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                   <>
                     {/* Daily group */}
                     {/* Statics (last biz day) */}
-                    <div className="w-14 text-right shrink-0">
+                    <div className="w-14 text-left shrink-0">
                       <span className="text-gray-600 text-sm">{entry.daily_static_count || 0}</span>
                     </div>
 
                     {/* Video (last biz day) */}
-                    <div className="w-14 text-right shrink-0">
+                    <div className="w-14 text-left shrink-0">
                       <span className="text-gray-600 text-sm">{entry.daily_video_count || 0}</span>
                     </div>
 
                     {/* Productivity (last biz day) */}
-                    <div className="w-20 text-right shrink-0">
+                    <div className="w-20 text-left shrink-0">
                       <span className="text-gray-600">{entry.daily_avg_productivity != null ? formatScore(entry.daily_avg_productivity) : '–'}</span>
                     </div>
 
                     {/* Quality (last biz day) */}
-                    <div className="w-20 text-right shrink-0">
+                    <div className="w-20 text-left shrink-0">
                       <span className="text-gray-600">{entry.daily_avg_quality != null ? formatScore(entry.daily_avg_quality) : '–'}</span>
                     </div>
 
                     {/* Added (last biz day avg total score) */}
-                    <div className="w-16 text-right shrink-0">
+                    <div className="w-16 text-left shrink-0">
                       <span className="text-gray-700 font-medium text-sm">
                         {entry.last_day_added ? `+${formatScore(entry.last_day_added)}` : '–'}
                       </span>
@@ -326,15 +321,15 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
 
                     {/* Weekly group */}
                     <div className="flex items-center gap-4 ml-4 pl-4 border-l-2 border-gray-300">
-                      {/* Cumulative (weekly total) */}
-                      <div className="w-24 text-right shrink-0">
+                      {/* Total (weekly cumulative) */}
+                      <div className="w-24 text-left shrink-0">
                         <span className="text-gray-600 font-semibold">
                           {formatScore(entry.cumulative_total_score || 0)}
                         </span>
                       </div>
 
-                      {/* Avg Total (weekly average) */}
-                      <div className="w-20 text-right shrink-0">
+                      {/* Average (weekly) */}
+                      <div className="w-20 text-left shrink-0">
                         <span className="font-bold text-lg text-gray-900">
                           {formatScore(entry.avg_total_score)}
                         </span>
