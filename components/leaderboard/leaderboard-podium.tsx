@@ -160,7 +160,7 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
   const handleAnonymousDownload = useCallback(async () => {
     if (!listRef.current) return
 
-    // Find all entry rows and blur the bottom half
+    // Find all entry rows and blur avatar + name for the bottom half
     const rows = listRef.current.querySelectorAll<HTMLElement>('[data-rank]')
     const totalRows = rows.length
     const blurFrom = Math.ceil(totalRows / 2)
@@ -168,8 +168,10 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
 
     rows.forEach((row, index) => {
       if (index >= blurFrom) {
-        blurred.push({ el: row, prev: row.style.filter })
-        row.style.filter = 'blur(6px)'
+        row.querySelectorAll<HTMLElement>('[data-anon="blur"]').forEach((el) => {
+          blurred.push({ el, prev: el.style.filter })
+          el.style.filter = 'blur(12px)'
+        })
       }
     })
 
@@ -308,7 +310,7 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                 <RankBadge rank={entry.rank} />
 
                 {/* Avatar */}
-                <Avatar className={cn(
+                <Avatar data-anon="blur" className={cn(
                   'h-9 w-9 shrink-0',
                   entry.rank === 1 && 'ring-2 ring-yellow-500',
                   entry.rank === 2 && 'ring-2 ring-gray-400',
@@ -323,7 +325,7 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
                 </Avatar>
 
                 {/* Name */}
-                <div className="flex-1 min-w-0">
+                <div data-anon="blur" className="flex-1 min-w-0">
                   <p className={cn(
                     'truncate',
                     isTopThree ? 'font-semibold' : 'font-medium'
