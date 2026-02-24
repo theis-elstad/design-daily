@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Upload, Trophy, Gavel, LayoutDashboard, Users, Camera } from 'lucide-react'
+import { LogOut, Upload, Trophy, Gavel, LayoutDashboard, Users, Camera, Home } from 'lucide-react'
 import { logout } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,6 +22,7 @@ interface HeaderProps {
 }
 
 const navItems = [
+  { href: '/home', label: 'Home', icon: Home },
   { href: '/submit', label: 'Submit', icon: Upload },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
 ]
@@ -52,7 +53,7 @@ export function Header({ profile }: HeaderProps) {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/submit" className="text-xl font-bold">
+            <Link href="/home" className="text-xl font-bold">
               Design Daily
             </Link>
             <nav className="hidden md:flex items-center gap-1">

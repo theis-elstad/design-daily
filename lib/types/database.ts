@@ -159,6 +159,24 @@ export type SubmissionWithDetails = Submission & {
   ratings: (Rating & { profiles: Pick<Profile, 'full_name'> })[]
 }
 
+export type AppStatus = 'active' | 'beta' | 'maintenance' | 'hidden'
+
+export type App = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  url: string
+  icon_url: string | null
+  status: AppStatus
+  display_order: number
+  open_in_new_tab: boolean
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string | null
+  deleted_at: string | null
+}
+
 export type LeaderboardEntry = {
   user_id: string
   full_name: string | null

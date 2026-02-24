@@ -7,18 +7,21 @@ import {
   getDesigners,
   getDesignerStats,
 } from '@/lib/actions/admin'
+import { getAllApps } from '@/lib/actions/apps'
 import { StatsCards } from '@/components/admin/stats-cards'
 import { SubmissionsTable } from '@/components/admin/submissions-table'
 import { DesignerStatsTable } from '@/components/admin/designer-stats-table'
+import { AdminAppList } from '@/components/apps/admin-app-list'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 async function AdminDashboardContent() {
-  const [stats, submissions, designers, designerStats] = await Promise.all([
+  const [stats, submissions, designers, designerStats, apps] = await Promise.all([
     getAdminStats(),
     getAllSubmissions({}),
     getDesigners(),
     getDesignerStats(),
+    getAllApps(),
   ])
 
   return (
@@ -29,12 +32,16 @@ async function AdminDashboardContent() {
         <TabsList>
           <TabsTrigger value="designers">Designer Summary</TabsTrigger>
           <TabsTrigger value="submissions">All Submissions</TabsTrigger>
+          <TabsTrigger value="apps">Apps</TabsTrigger>
         </TabsList>
         <TabsContent value="designers" className="mt-4">
           <DesignerStatsTable stats={designerStats} />
         </TabsContent>
         <TabsContent value="submissions" className="mt-4">
           <SubmissionsTable submissions={submissions} designers={designers} />
+        </TabsContent>
+        <TabsContent value="apps" className="mt-4">
+          <AdminAppList apps={apps} />
         </TabsContent>
       </Tabs>
     </div>

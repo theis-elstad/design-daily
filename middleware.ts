@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
   // Redirect authenticated users away from auth pages
   if (user && isPublicRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/submit'
+    url.pathname = '/home'
     return NextResponse.redirect(url)
   }
 
