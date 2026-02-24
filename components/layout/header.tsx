@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Upload, Trophy, Gavel, LayoutDashboard, Users, Camera, Home } from 'lucide-react'
+import { LogOut, Upload, Trophy, Gavel, LayoutDashboard, Users, Camera, Home, ShieldCheck, ChevronDown } from 'lucide-react'
 import { logout } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,6 +37,7 @@ export function Header({ profile }: HeaderProps) {
   const pathname = usePathname()
   const isAdmin = profile.role === 'admin'
   const allNavItems = isAdmin ? [...navItems, ...adminNavItems] : navItems
+  const isAdminRoute = adminNavItems.some((item) => pathname === item.href)
 
   const initials = profile.full_name
     ? profile.full_name
@@ -57,7 +58,7 @@ export function Header({ profile }: HeaderProps) {
               Design Daily
             </Link>
             <nav className="hidden md:flex items-center gap-1">
-              {allNavItems.map((item) => {
+              {navItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href
                 return (
@@ -76,6 +77,35 @@ export function Header({ profile }: HeaderProps) {
                   </Link>
                 )
               })}
+              {isAdmin && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors outline-none',
+                      isAdminRoute
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    )}
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Admin
+                    <ChevronDown className="h-3 w-3" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {adminNavItems.map((item) => {
+                      const Icon = item.icon
+                      return (
+                        <DropdownMenuItem key={item.href} asChild>
+                          <Link href={item.href} className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      )
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </nav>
           </div>
 
