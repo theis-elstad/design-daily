@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Upload, Trophy, Grid3X3, Gavel, LayoutDashboard, Users, Camera } from 'lucide-react'
+import { LogOut, Upload, Trophy, Gavel, LayoutDashboard, Users, Camera } from 'lucide-react'
 import { logout } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,7 +24,6 @@ interface HeaderProps {
 const navItems = [
   { href: '/submit', label: 'Submit', icon: Upload },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-  { href: '/matrix', label: 'Matrix', icon: Grid3X3 },
 ]
 
 const adminNavItems = [

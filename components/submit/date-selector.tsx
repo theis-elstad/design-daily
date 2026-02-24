@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { format, subDays, isToday, parseISO, isWeekend } from 'date-fns'
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 interface DateSelectorProps {
   currentDate: string
@@ -78,66 +77,35 @@ export function DateSelector({ currentDate, maxDaysBack = 7 }: DateSelectorProps
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Navigation arrows and current date */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={goOlder}
-          disabled={!canGoOlder}
-          className="h-8 w-8"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+    <div className="flex items-center justify-between">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={goOlder}
+        disabled={!canGoOlder}
+        className="h-8 w-8"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
 
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Calendar className="h-4 w-4 text-gray-500" />
-          <span>
-            {isToday(selectedDate)
-              ? 'Today'
-              : format(selectedDate, 'EEEE, MMM d')}
-          </span>
-        </div>
-
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={goNewer}
-          disabled={!canGoNewer}
-          className="h-8 w-8"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Calendar className="h-4 w-4 text-gray-500" />
+        <span>
+          {isToday(selectedDate)
+            ? 'Today'
+            : format(selectedDate, 'EEEE, MMM d')}
+        </span>
       </div>
 
-      {/* Date pills */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
-        {dates.map((date) => {
-          const dateStr = format(date, 'yyyy-MM-dd')
-          const isSelected = dateStr === currentDate
-          const dayIsToday = isToday(date)
-          const isDisabled = isWeekend(date)
-
-          return (
-            <button
-              key={dateStr}
-              onClick={() => handleDateChange(date)}
-              disabled={isDisabled}
-              className={cn(
-                'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
-                isDisabled
-                  ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
-                  : isSelected
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              )}
-            >
-              {dayIsToday ? 'Today' : format(date, 'EEE d')}
-            </button>
-          )
-        })}
-      </div>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={goNewer}
+        disabled={!canGoNewer}
+        className="h-8 w-8"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
     </div>
   )
 }

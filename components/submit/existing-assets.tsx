@@ -115,7 +115,7 @@ export function ExistingAssets({ assets: initialAssets }: ExistingAssetsProps) {
                   handleDelete(asset)
                 }}
                 disabled={deletingId === asset.id}
-                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity disabled:opacity-50"
               >
                 {deletingId === asset.id ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
