@@ -41,7 +41,7 @@ export function AppCard({ app }: AppCardProps) {
   const cardContent = (
     <Card
       className={cn(
-        'group relative flex items-start gap-4 p-5 transition-all duration-200',
+        'group relative flex h-full items-start gap-4 p-5 transition-all duration-200',
         isMaintenance
           ? 'cursor-not-allowed opacity-50'
           : 'cursor-pointer hover:shadow-lg hover:scale-[1.02] hover:border-blue-300'
@@ -63,11 +63,9 @@ export function AppCard({ app }: AppCardProps) {
           </h3>
           <StatusBadge status={app.status} />
         </div>
-        {app.description && (
-          <p className="mt-1 line-clamp-2 text-sm text-gray-500">
-            {app.description}
-          </p>
-        )}
+        <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+          {app.description || '\u00A0'}
+        </p>
       </div>
       {app.open_in_new_tab && !isMaintenance && (
         <ExternalLink className="h-4 w-4 shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
