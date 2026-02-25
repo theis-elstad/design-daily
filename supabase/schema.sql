@@ -52,6 +52,8 @@ CREATE TABLE public.assets (
     storage_path TEXT NOT NULL,
     file_name TEXT NOT NULL,
     file_size INTEGER,
+    asset_type TEXT NOT NULL DEFAULT 'image' CHECK (asset_type IN ('image', 'video')),
+    duration NUMERIC,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -64,6 +66,7 @@ CREATE TABLE public.ratings (
     rated_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     productivity INTEGER NOT NULL CHECK (productivity BETWEEN 1 AND 5),
     quality INTEGER NOT NULL CHECK (quality BETWEEN 1 AND 5),
+    comment TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_rating UNIQUE (submission_id, rated_by)
 );
@@ -254,10 +257,14 @@ CREATE POLICY "assets_delete_admin" ON public.assets
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
 
--- Ratings: admin only
+-- Ratings: admin only + designers can read own feedback
 CREATE POLICY "ratings_select_admin" ON public.ratings
     FOR SELECT USING (
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+CREATE POLICY "ratings_select_own_feedback" ON public.ratings
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM public.submissions WHERE id = submission_id AND user_id = auth.uid())
     );
 CREATE POLICY "ratings_insert_admin" ON public.ratings
     FOR INSERT WITH CHECK (
@@ -338,6 +345,40 @@ CREATE POLICY "apps_update_admin" ON public.apps
 
 -- Admins can delete
 CREATE POLICY "apps_delete_admin" ON public.apps
+    FOR DELETE USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+
+-- ============================================
+-- AI SUMMARIES TABLE (feedback summaries)
+-- ============================================
+CREATE TABLE public.ai_summaries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL CHECK (type IN ('judge_context', 'designer_feedback', 'admin_weekly')),
+    target_user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    generated_by UUID REFERENCES public.profiles(id),
+    content TEXT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_ai_summaries_target ON public.ai_summaries(target_user_id, type, created_at DESC);
+
+ALTER TABLE public.ai_summaries ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "ai_summaries_select_own" ON public.ai_summaries
+    FOR SELECT USING (auth.uid() = target_user_id);
+CREATE POLICY "ai_summaries_select_admin" ON public.ai_summaries
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+CREATE POLICY "ai_summaries_insert_admin" ON public.ai_summaries
+    FOR INSERT WITH CHECK (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+CREATE POLICY "ai_summaries_insert_own" ON public.ai_summaries
+    FOR INSERT WITH CHECK (auth.uid() = target_user_id);
+CREATE POLICY "ai_summaries_delete_admin" ON public.ai_summaries
     FOR DELETE USING (
         EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );

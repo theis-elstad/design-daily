@@ -7,6 +7,7 @@ import { Image, Video, CheckCircle, Pencil, MessageSquare, Trash2, Loader2, Star
 import { toast } from 'sonner'
 import { SubmissionGallery } from './submission-gallery'
 import { RatingForm } from './rating-form'
+import { AIContextPanel } from './ai-context-panel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ interface SubmissionDetailProps {
   submission: {
     id: string
     submission_date: string
+    user_id: string
     submitterName: string
     comment?: string | null
     imageCount: number
@@ -31,6 +33,7 @@ interface SubmissionDetailProps {
     myRating: {
       productivity: number
       quality: number
+      comment?: string | null
     } | null
     assets: {
       id: string
@@ -42,6 +45,7 @@ interface SubmissionDetailProps {
       ratedBy: string
       productivity: number
       quality: number
+      comment?: string | null
       ratedAt: string
     }[]
   }
@@ -162,6 +166,8 @@ export function SubmissionDetail({ submission }: SubmissionDetailProps) {
             onRated={handleRated}
           />
 
+          <AIContextPanel designerUserId={submission.user_id} />
+
           {/* Reviewer Info */}
           {submission.allRatings && submission.allRatings.length > 0 && (
             <Card>
@@ -185,6 +191,11 @@ export function SubmissionDetail({ submission }: SubmissionDetailProps) {
                         Quality: {rating.quality}
                       </span>
                     </div>
+                    {rating.comment && (
+                      <p className="text-sm text-gray-600 bg-gray-50 rounded p-2 mt-1">
+                        {rating.comment}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-400">
                       {format(new Date(rating.ratedAt), 'MMM d, yyyy h:mm a')}
                     </p>

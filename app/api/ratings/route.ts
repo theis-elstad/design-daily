@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { submissionId, ratings } = body
+    const { submissionId, ratings, comment } = body
 
     if (!submissionId || !ratings) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         rated_by: user.id,
         productivity,
         quality,
+        comment: comment || null,
       },
       {
         onConflict: 'submission_id,rated_by',

@@ -41,7 +41,7 @@ export async function checkSubmission(targetDate?: string) {
   type SubmissionWithAssets = {
     id: string
     comment: string | null
-    assets: { id: string; submission_id: string; storage_path: string; file_name: string; file_size: number | null; asset_type?: 'image' | 'video'; created_at: string }[]
+    assets: { id: string; submission_id: string; storage_path: string; file_name: string; file_size: number | null; asset_type?: 'image' | 'video'; duration?: number | null; created_at: string }[]
   }
 
   const typedData = data as SubmissionWithAssets | null
@@ -50,6 +50,7 @@ export async function checkSubmission(targetDate?: string) {
   const assetsWithType = (typedData?.assets || []).map((asset) => ({
     ...asset,
     asset_type: asset.asset_type || (isVideoFile(asset.file_name) ? 'video' : 'image') as 'image' | 'video',
+    duration: asset.duration ?? null,
   }))
 
   return {
@@ -66,7 +67,7 @@ export async function checkTodaySubmission() {
   return checkSubmission()
 }
 
-export async function createSubmission(assetPaths: string[], targetDate?: string, comment?: string) {
+export async function createSubmission(assetFiles: { path: string; duration?: number }[], targetDate?: string, comment?: string) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -122,13 +123,15 @@ export async function createSubmission(assetPaths: string[], targetDate?: string
   }
 
   // Create asset records
-  const assets = assetPaths.map((path) => {
-    const fileName = path.split('/').pop() || 'unknown'
+  const assets = assetFiles.map((file) => {
+    const fileName = file.path.split('/').pop() || 'unknown'
+    const isVideo = isVideoFile(fileName)
     return {
       submission_id: submissionId,
-      storage_path: path,
+      storage_path: file.path,
       file_name: fileName,
-      asset_type: isVideoFile(fileName) ? 'video' : 'image',
+      asset_type: isVideo ? 'video' : 'image',
+      duration: isVideo && file.duration ? file.duration : null,
     }
   })
 

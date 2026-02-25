@@ -13,16 +13,39 @@ import {
   type MediaItem,
 } from '@/components/ui/media-preview-modal'
 
+function getVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => {
+      const duration = video.duration
+      URL.revokeObjectURL(video.src)
+      resolve(duration)
+    }
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src)
+      reject(new Error('Failed to load video metadata'))
+    }
+    video.src = URL.createObjectURL(file)
+  })
+}
+
 interface UploadedFile {
   path: string
   name: string
   previewUrl: string
   type: 'image' | 'video'
+  duration?: number
+}
+
+export interface UploadedFileInfo {
+  path: string
+  duration?: number
 }
 
 interface ImageDropzoneProps {
   userId: string
-  onUploadComplete: (paths: string[]) => void
+  onUploadComplete: (files: UploadedFileInfo[]) => void
   disabled?: boolean
 }
 
@@ -60,11 +83,20 @@ export function ImageDropzone({
         } else {
           const previewUrl = URL.createObjectURL(file)
           const isVideo = file.type.startsWith('video/')
+          let duration: number | undefined
+          if (isVideo) {
+            try {
+              duration = await getVideoDuration(file)
+            } catch {
+              // Duration extraction failed — will default later
+            }
+          }
           newFiles.push({
             path: filePath,
             name: file.name,
             previewUrl,
             type: isVideo ? 'video' : 'image',
+            duration,
           })
         }
 
@@ -86,8 +118,11 @@ export function ImageDropzone({
   }
 
   const handleSubmit = () => {
-    const paths = uploadedFiles.map((f) => f.path)
-    onUploadComplete(paths)
+    const files: UploadedFileInfo[] = uploadedFiles.map((f) => ({
+      path: f.path,
+      duration: f.duration,
+    }))
+    onUploadComplete(files)
     // Clean up preview URLs
     uploadedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl))
     setUploadedFiles([])

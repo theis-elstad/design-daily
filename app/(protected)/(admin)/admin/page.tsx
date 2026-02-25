@@ -8,20 +8,23 @@ import {
   getDesignerStats,
 } from '@/lib/actions/admin'
 import { getAllApps } from '@/lib/actions/apps'
+import { getAdminAISummaries } from '@/lib/actions/feedback'
 import { StatsCards } from '@/components/admin/stats-cards'
 import { SubmissionsTable } from '@/components/admin/submissions-table'
 import { DesignerStatsTable } from '@/components/admin/designer-stats-table'
 import { AdminAppList } from '@/components/apps/admin-app-list'
+import { AIFeedbackList } from '@/components/admin/ai-feedback-list'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 async function AdminDashboardContent() {
-  const [stats, submissions, designers, designerStats, apps] = await Promise.all([
+  const [stats, submissions, designers, designerStats, apps, aiSummaries] = await Promise.all([
     getAdminStats(),
     getAllSubmissions({}),
     getDesigners(),
     getDesignerStats(),
     getAllApps(),
+    getAdminAISummaries(),
   ])
 
   return (
@@ -33,6 +36,7 @@ async function AdminDashboardContent() {
           <TabsTrigger value="designers">Designer Summary</TabsTrigger>
           <TabsTrigger value="submissions">All Submissions</TabsTrigger>
           <TabsTrigger value="apps">Apps</TabsTrigger>
+          <TabsTrigger value="ai-feedback">AI Feedback</TabsTrigger>
         </TabsList>
         <TabsContent value="designers" className="mt-4">
           <DesignerStatsTable stats={designerStats} />
@@ -42,6 +46,9 @@ async function AdminDashboardContent() {
         </TabsContent>
         <TabsContent value="apps" className="mt-4">
           <AdminAppList apps={apps} />
+        </TabsContent>
+        <TabsContent value="ai-feedback" className="mt-4">
+          <AIFeedbackList initialSummaries={aiSummaries} />
         </TabsContent>
       </Tabs>
     </div>

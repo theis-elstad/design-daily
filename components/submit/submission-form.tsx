@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import { toast } from 'sonner'
 import { CheckCircle, Loader2, Save, CalendarOff } from 'lucide-react'
-import { ImageDropzone } from './image-dropzone'
+import { ImageDropzone, type UploadedFileInfo } from './image-dropzone'
 import { ExistingAssets } from './existing-assets'
 import { createSubmission, updateComment } from '@/lib/actions/submissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,9 +52,9 @@ export function SubmissionForm({
 
   const commentChanged = comment !== savedComment
 
-  const handleUploadComplete = (paths: string[]) => {
+  const handleUploadComplete = (files: UploadedFileInfo[]) => {
     startTransition(async () => {
-      const result = await createSubmission(paths, selectedDate, comment)
+      const result = await createSubmission(files, selectedDate, comment)
       if (result.error) {
         toast.error(result.error)
       } else {

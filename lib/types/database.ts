@@ -69,6 +69,7 @@ export type Database = {
           file_name: string
           file_size: number | null
           asset_type: 'image' | 'video'
+          duration: number | null
           created_at: string
         }
         Insert: {
@@ -78,6 +79,7 @@ export type Database = {
           file_name: string
           file_size?: number | null
           asset_type?: 'image' | 'video'
+          duration?: number | null
           created_at?: string
         }
         Update: {
@@ -87,6 +89,7 @@ export type Database = {
           file_name?: string
           file_size?: number | null
           asset_type?: 'image' | 'video'
+          duration?: number | null
           created_at?: string
         }
       }
@@ -97,6 +100,7 @@ export type Database = {
           rated_by: string
           productivity: number
           quality: number
+          comment: string | null
           created_at: string
         }
         Insert: {
@@ -105,6 +109,7 @@ export type Database = {
           rated_by: string
           productivity: number
           quality: number
+          comment?: string | null
           created_at?: string
         }
         Update: {
@@ -113,6 +118,7 @@ export type Database = {
           rated_by?: string
           productivity?: number
           quality?: number
+          comment?: string | null
           created_at?: string
         }
       }
@@ -175,6 +181,18 @@ export type App = {
   created_at: string
   updated_at: string | null
   deleted_at: string | null
+}
+
+export type AiSummaryType = 'judge_context' | 'designer_feedback' | 'admin_weekly'
+
+export type AiSummary = {
+  id: string
+  type: AiSummaryType
+  target_user_id: string
+  generated_by: string | null
+  content: string
+  metadata: Record<string, unknown>
+  created_at: string
 }
 
 export type LeaderboardEntry = {

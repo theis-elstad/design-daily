@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { computeWeightedProductivityCount } from '@/lib/utils'
 
 function computeSuggestedProductivity(assetCount: number, medianAssetCount: number): number {
   if (medianAssetCount === 0) return 3
@@ -38,13 +39,15 @@ export async function getSubmissionsForJudging(date?: string) {
         id,
         storage_path,
         file_name,
-        asset_type
+        asset_type,
+        duration
       ),
       ratings!left (
         id,
         rated_by,
         productivity,
         quality,
+        comment,
         created_at
       )
     `
@@ -67,8 +70,8 @@ export async function getSubmissionsForJudging(date?: string) {
     comment: string | null
     updated_at: string | null
     profiles: { full_name: string | null }
-    assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
-    ratings: { id: string; rated_by: string; productivity: number; quality: number; created_at: string }[]
+    assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video'; duration: number | null }[]
+    ratings: { id: string; rated_by: string; productivity: number; quality: number; comment: string | null; created_at: string }[]
   }
 
   const typedSubmissions = (submissions || []) as SubmissionForJudging[]
@@ -130,13 +133,15 @@ export async function getSubmissionForJudgingById(submissionId: string) {
         id,
         storage_path,
         file_name,
-        asset_type
+        asset_type,
+        duration
       ),
       ratings!left (
         id,
         rated_by,
         productivity,
         quality,
+        comment,
         created_at,
         profiles (
           full_name
@@ -156,8 +161,8 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     comment: string | null
     updated_at: string | null
     profiles: { full_name: string | null }
-    assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video' }[]
-    ratings: { id: string; rated_by: string; productivity: number; quality: number; created_at: string; profiles: { full_name: string | null } }[]
+    assets: { id: string; storage_path: string; file_name: string; asset_type: 'image' | 'video'; duration: number | null }[]
+    ratings: { id: string; rated_by: string; productivity: number; quality: number; comment: string | null; created_at: string; profiles: { full_name: string | null } }[]
   }
 
   const sub = data as SubmissionResult
@@ -176,26 +181,33 @@ export async function getSubmissionForJudgingById(submissionId: string) {
     }
   }
 
-  // Calculate suggested productivity based on median asset count for the day
+  // Calculate suggested productivity based on weighted median for the day
   const { data: daySubmissions } = await supabase
     .from('submissions')
-    .select('id, assets(id)')
+    .select('id, assets(id, asset_type, duration)')
     .eq('submission_date', sub.submission_date)
 
-  type DaySubmission = { id: string; assets: { id: string }[] }
-  const assetCounts = ((daySubmissions || []) as DaySubmission[])
-    .map((s) => s.assets?.length || 0)
+  type DaySubmission = { id: string; assets: { id: string; asset_type: 'image' | 'video'; duration: number | null }[] }
+  const weightedCounts = ((daySubmissions || []) as DaySubmission[])
+    .map((s) => {
+      const assets = s.assets || []
+      const statics = assets.filter((a) => a.asset_type === 'image').length
+      const videos = assets.filter((a) => a.asset_type === 'video')
+      return computeWeightedProductivityCount(statics, videos)
+    })
     .sort((a, b) => a - b)
-  const mid = Math.floor(assetCounts.length / 2)
-  const medianAssetCount =
-    assetCounts.length === 0
+  const mid = Math.floor(weightedCounts.length / 2)
+  const medianWeightedCount =
+    weightedCounts.length === 0
       ? 0
-      : assetCounts.length % 2 !== 0
-        ? assetCounts[mid]
-        : (assetCounts[mid - 1] + assetCounts[mid]) / 2
+      : weightedCounts.length % 2 !== 0
+        ? weightedCounts[mid]
+        : (weightedCounts[mid - 1] + weightedCounts[mid]) / 2
 
-  const totalAssets = sub.assets?.length || 0
-  const suggestedProductivity = computeSuggestedProductivity(totalAssets, medianAssetCount)
+  const thisStatics = sub.assets?.filter((a) => a.asset_type === 'image').length || 0
+  const thisVideos = sub.assets?.filter((a) => a.asset_type === 'video') || []
+  const thisWeightedCount = computeWeightedProductivityCount(thisStatics, thisVideos)
+  const suggestedProductivity = computeSuggestedProductivity(thisWeightedCount, medianWeightedCount)
 
   return {
     id: sub.id,
@@ -213,6 +225,7 @@ export async function getSubmissionForJudgingById(submissionId: string) {
       ratedBy: r.profiles?.full_name || 'Unknown',
       productivity: r.productivity,
       quality: r.quality,
+      comment: r.comment,
       ratedAt: r.created_at,
     })),
   }
