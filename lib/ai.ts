@@ -1,14 +1,21 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
+let _anthropic: Anthropic | null = null
+
+function getClient(): Anthropic {
+  if (!_anthropic) {
+    _anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY!,
+    })
+  }
+  return _anthropic
+}
 
 export async function generateAISummary(
   systemPrompt: string,
   userPrompt: string
 ): Promise<string> {
-  const message = await anthropic.messages.create({
+  const message = await getClient().messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1024,
     system: systemPrompt,
