@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { AIMarkdown } from '@/components/ui/ai-markdown'
 
 interface FeedbackAISummaryProps {
   summary: {
@@ -77,9 +78,7 @@ export function FeedbackAISummary({ summary: initialSummary }: FeedbackAISummary
       <CardContent>
         {summary ? (
           <div className="space-y-3">
-            <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-              {summary.content}
-            </div>
+            <AIMarkdown content={summary.content} />
             <p className="text-xs text-gray-400">
               Generated {format(new Date(summary.createdAt), 'MMM d, yyyy h:mm a')}
             </p>

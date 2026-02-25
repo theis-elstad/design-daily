@@ -5,6 +5,7 @@ import { Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { AIMarkdown } from '@/components/ui/ai-markdown'
 
 interface AIContextPanelProps {
   designerUserId: string
@@ -80,9 +81,7 @@ export function AIContextPanel({ designerUserId }: AIContextPanelProps) {
       </CardHeader>
       {content && isExpanded && (
         <CardContent>
-          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-            {content}
-          </div>
+          <AIMarkdown content={content} />
         </CardContent>
       )}
       {!content && !isLoading && (

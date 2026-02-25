@@ -6,6 +6,7 @@ import { Sparkles, Loader2, RefreshCw, ChevronDown, ChevronUp, User } from 'luci
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { AIMarkdown } from '@/components/ui/ai-markdown'
 
 interface DesignerSummary {
   designerId: string
@@ -163,8 +164,8 @@ export function AIFeedbackList({ initialSummaries }: AIFeedbackListProps) {
                   </div>
                 </div>
                 {isExpanded && item.summary && (
-                  <div className="mt-3 ml-6 prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-lg p-3">
-                    {item.summary.content}
+                  <div className="mt-3 ml-6 bg-gray-50 rounded-lg p-3">
+                    <AIMarkdown content={item.summary.content} />
                   </div>
                 )}
               </div>
