@@ -2,7 +2,7 @@
 
 import { useRef, useCallback } from 'react'
 import { format, getISOWeek } from 'date-fns'
-import { Trophy, Download, Medal, Image, EyeOff } from 'lucide-react'
+import { Trophy, Download, Medal, Image, EyeOff, ScissorsLineDashed } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn, getAvatarUrl } from '@/lib/utils'
@@ -197,6 +197,42 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
     }
   }, [])
 
+  const handleTopHalfDownload = useCallback(async () => {
+    if (!listRef.current) return
+
+    const rows = listRef.current.querySelectorAll<HTMLElement>('[data-rank]')
+    const totalRows = rows.length
+    const hideFrom = Math.ceil(totalRows / 2)
+    const hidden: { el: HTMLElement; prev: string }[] = []
+
+    rows.forEach((row, index) => {
+      if (index >= hideFrom) {
+        hidden.push({ el: row, prev: row.style.display })
+        row.style.display = 'none'
+      }
+    })
+
+    try {
+      const htmlToImage = await import('html-to-image')
+
+      const dataUrl = await htmlToImage.toPng(listRef.current, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+      })
+
+      const link = document.createElement('a')
+      link.download = `leaderboard-top-half-${new Date().toISOString().split('T')[0]}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (error) {
+      console.error('Failed to download top-half leaderboard image:', error)
+    } finally {
+      hidden.forEach(({ el, prev }) => {
+        el.style.display = prev
+      })
+    }
+  }, [])
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -216,6 +252,9 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
               <EyeOff className="h-4 w-4" />
             </Button>
           )}
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleTopHalfDownload} title="Download top half only">
+            <ScissorsLineDashed className="h-4 w-4" />
+          </Button>
           <Button variant="outline" size="sm" onClick={handleDownload}>
             <Download className="h-4 w-4 mr-2" />
             Download
