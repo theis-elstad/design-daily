@@ -67,3 +67,13 @@ export interface WizardState {
   status: 'idle' | 'generating' | 'complete' | 'error'
   error?: string
 }
+
+export interface JewelGenPrompt {
+  id: string
+  prompt_key: string
+  title: string
+  description: string | null
+  content: string
+  updated_at: string
+  updated_by: string | null
+}

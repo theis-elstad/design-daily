@@ -7,6 +7,14 @@ import { ProductStep } from '@/components/jewelgen/product-step'
 import { ReferenceStep } from '@/components/jewelgen/reference-step'
 import { SettingsStep } from '@/components/jewelgen/settings-step'
 import { ResultsStep } from '@/components/jewelgen/results-step'
+import Link from 'next/link'
+import { Library, Settings, ChevronDown, FileText } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { fileToBase64 } from '@/lib/image-resize'
 import type { ProductImage, GenerationSettings } from '@/lib/types/jewelgen'
 import { DEFAULT_SETTINGS } from '@/lib/types/jewelgen'
@@ -121,11 +129,32 @@ export default function JewelGenNewPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-8">
-      <div className="text-center">
+      <div className="relative text-center">
         <h1 className="text-2xl font-bold">JewelGen</h1>
         <p className="text-sm text-muted-foreground">
           Generate beautiful jewelry ad images
         </p>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="absolute right-0 top-0 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <Settings className="h-4 w-4" />
+            Settings
+            <ChevronDown className="h-3 w-3" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href="/jewelgen/library" className="flex items-center gap-2">
+                <Library className="h-4 w-4" />
+                Library
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/jewelgen/prompts" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Prompts
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <StepIndicator

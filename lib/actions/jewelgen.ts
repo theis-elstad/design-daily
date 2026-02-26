@@ -5,6 +5,7 @@ import type {
   JewelGenRefCategory,
   JewelGenRefImage,
   JewelGenGeneration,
+  JewelGenPrompt,
 } from '@/lib/types/jewelgen'
 
 // ============================================================
@@ -152,4 +153,35 @@ export async function getSignedUrl(
 
   if (error) throw new Error(error.message)
   return data.signedUrl
+}
+
+// ============================================================
+// Prompts
+// ============================================================
+
+export async function getPrompts(): Promise<JewelGenPrompt[]> {
+  const supabase = await createClient()
+  const { data, error } = await (supabase.from('jewelgen_prompts') as any)
+    .select('*')
+    .order('prompt_key')
+
+  if (error) throw new Error(error.message)
+  return (data || []) as JewelGenPrompt[]
+}
+
+export async function updatePrompt(id: string, content: string): Promise<void> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { error } = await (supabase.from('jewelgen_prompts') as any)
+    .update({
+      content,
+      updated_at: new Date().toISOString(),
+      updated_by: user?.id || null,
+    })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
 }

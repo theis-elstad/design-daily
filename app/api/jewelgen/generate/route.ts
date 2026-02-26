@@ -3,7 +3,7 @@ export const runtime = 'edge'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callGemini, imagePartFromBase64, textPart } from '@/lib/gemini'
-import { generatePrompt } from '@/lib/jewelgen-prompts'
+import { resolveGeneratePrompt } from '@/lib/jewelgen-prompts'
 import type { GenerationSettings } from '@/lib/types/jewelgen'
 
 export async function POST(request: Request) {
@@ -38,7 +38,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const prompt = generatePrompt(settings)
+    const { data: promptRow } = await (supabase.from('jewelgen_prompts') as any)
+      .select('content')
+      .eq('prompt_key', 'generate')
+      .single()
+
+    const prompt = resolveGeneratePrompt(settings, promptRow?.content ?? null)
     const variations = settings.variations || 1
     const outputPaths: string[] = []
     const outputImages: Array<{ base64: string; mimeType: string }> = []

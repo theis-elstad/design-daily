@@ -3,7 +3,7 @@ export const runtime = 'edge'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callGemini, imagePartFromBase64, textPart } from '@/lib/gemini'
-import { editPrompt } from '@/lib/jewelgen-prompts'
+import { resolveEditPrompt } from '@/lib/jewelgen-prompts'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -25,9 +25,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    const { data: promptRow } = await (supabase.from('jewelgen_prompts') as any)
+      .select('content')
+      .eq('prompt_key', 'edit')
+      .single()
+
     const parts = [
       imagePartFromBase64(imageBase64, mimeType || 'image/jpeg'),
-      textPart(editPrompt(comment)),
+      textPart(resolveEditPrompt(comment, promptRow?.content ?? null)),
     ]
 
     const images = await callGemini(parts)

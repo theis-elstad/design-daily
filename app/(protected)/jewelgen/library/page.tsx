@@ -278,7 +278,7 @@ export default function JewelGenLibraryPage() {
                   className={cn(
                     'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
                     selectedChild === child.id
-                      ? 'bg-secondary text-secondary-foreground'
+                      ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-muted'
                   )}
                 >
