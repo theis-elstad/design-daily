@@ -1,14 +1,15 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Upload, X } from 'lucide-react'
+import { Upload, X, Loader2, Sparkles, BookmarkPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { resizeImageFile } from '@/lib/image-resize'
+import { resizeImageFile, fileToBase64 } from '@/lib/image-resize'
 import { ReferenceLibraryBrowser } from './reference-library-browser'
+import { SaveToLibraryDialog } from './save-to-library-dialog'
 import type { ProductImage } from '@/lib/types/jewelgen'
 
 interface ReferenceStepProps {
@@ -24,6 +25,45 @@ export function ReferenceStep({
   onNext,
   onBack,
 }: ReferenceStepProps) {
+  const [removing, setRemoving] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+
+  const handleRemoveJewelry = async () => {
+    if (!referenceImage) return
+    setRemoving(true)
+    try {
+      const res = await fetch(referenceImage.previewUrl)
+      const blob = await res.blob()
+      const file = new File([blob], 'reference.jpg', { type: 'image/jpeg' })
+      const base64 = await fileToBase64(file)
+
+      const removeRes = await fetch('/api/jewelgen/remove-jewelry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' }),
+      })
+      const data = await removeRes.json()
+
+      if (!removeRes.ok) {
+        toast.error(data.error || 'Failed to remove jewelry')
+        return
+      }
+
+      const resultBlob = new Blob(
+        [Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0))],
+        { type: data.mimeType }
+      )
+      const previewUrl = URL.createObjectURL(resultBlob)
+      URL.revokeObjectURL(referenceImage.previewUrl)
+      onReferenceImage({ path: data.path, previewUrl })
+      toast.success('Jewelry removed')
+    } catch {
+      toast.error('Failed to remove jewelry')
+    } finally {
+      setRemoving(false)
+    }
+  }
+
   const handleFile = useCallback(
     async (file: File) => {
       try {
@@ -89,11 +129,34 @@ export function ReferenceStep({
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex justify-center gap-3">
-            <Button variant="outline" onClick={onBack}>
-              Back
-            </Button>
-            <Button onClick={onNext}>Continue</Button>
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleRemoveJewelry}
+                disabled={removing}
+              >
+                {removing ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                )}
+                {removing ? 'Removing…' : 'Remove Jewelry'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveDialog(true)}
+              >
+                <BookmarkPlus className="mr-1.5 h-4 w-4" />
+                Save to Library
+              </Button>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={onBack}>
+                Back
+              </Button>
+              <Button onClick={onNext}>Continue</Button>
+            </div>
           </div>
         </div>
       ) : (
@@ -135,6 +198,14 @@ export function ReferenceStep({
             </Button>
           </div>
         </>
+      )}
+
+      {referenceImage && (
+        <SaveToLibraryDialog
+          open={showSaveDialog}
+          onOpenChange={setShowSaveDialog}
+          imagePreviewUrl={referenceImage.previewUrl}
+        />
       )}
     </div>
   )

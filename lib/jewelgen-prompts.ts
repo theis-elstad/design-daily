@@ -62,6 +62,16 @@ export function resolveEditPrompt(
 }
 
 // ============================================================
+// Remove Jewelry
+// ============================================================
+
+const DEFAULT_REMOVE_JEWELRY_TEMPLATE = `Remove all jewelry from this image — including rings, necklaces, bracelets, earrings, watches, and any other accessories. Keep everything else exactly the same: the person, pose, clothing, background, lighting, and composition should remain completely unchanged. The result should look natural, as if no jewelry was ever present. Output a high-resolution image.`
+
+export function resolveRemoveJewelryPrompt(dbTemplate: string | null): string {
+  return dbTemplate || DEFAULT_REMOVE_JEWELRY_TEMPLATE
+}
+
+// ============================================================
 // Legacy wrappers (use hardcoded defaults — no DB)
 // ============================================================
 
