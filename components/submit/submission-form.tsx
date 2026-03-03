@@ -2,10 +2,10 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { toast } from 'sonner'
-import { CheckCircle, Loader2, Save, CalendarOff } from 'lucide-react'
+import { CheckCircle, Loader2, Save, CalendarOff, CircleCheck, Undo2 } from 'lucide-react'
 import { ImageDropzone, type UploadedFileInfo } from './image-dropzone'
 import { ExistingAssets } from './existing-assets'
-import { createSubmission, updateComment } from '@/lib/actions/submissions'
+import { createSubmission, updateComment, markSubmissionComplete } from '@/lib/actions/submissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ interface SubmissionFormProps {
   submissionId?: string | null
   selectedDate: string
   isWeekend?: boolean
+  isCompleted?: boolean
 }
 
 export function SubmissionForm({
@@ -30,12 +31,15 @@ export function SubmissionForm({
   submissionId: initialSubmissionId,
   selectedDate,
   isWeekend = false,
+  isCompleted: initialIsCompleted = false,
 }: SubmissionFormProps) {
   const [hasSubmitted, setHasSubmitted] = useState(initialHasSubmitted)
   const [existingAssets, setExistingAssets] = useState(initialExistingAssets)
   const [comment, setComment] = useState(initialComment || '')
   const [savedComment, setSavedComment] = useState(initialComment || '')
   const [submissionId, setSubmissionId] = useState(initialSubmissionId)
+  const [isCompleted, setIsCompleted] = useState(initialIsCompleted)
+  const [isMarkingComplete, setIsMarkingComplete] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [isSavingComment, setIsSavingComment] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -47,8 +51,9 @@ export function SubmissionForm({
     setComment(initialComment || '')
     setSavedComment(initialComment || '')
     setSubmissionId(initialSubmissionId)
+    setIsCompleted(initialIsCompleted)
     setShowSuccess(false)
-  }, [selectedDate, initialHasSubmitted, initialExistingAssets, initialComment, initialSubmissionId])
+  }, [selectedDate, initialHasSubmitted, initialExistingAssets, initialComment, initialSubmissionId, initialIsCompleted])
 
   const commentChanged = comment !== savedComment
 
@@ -63,6 +68,7 @@ export function SubmissionForm({
         if (result.submissionId) {
           setSubmissionId(result.submissionId)
         }
+        setIsCompleted(false)
         setShowSuccess(true)
         toast.success('Submission uploaded successfully!')
         setTimeout(() => setShowSuccess(false), 3000)
@@ -84,6 +90,23 @@ export function SubmissionForm({
       }
     } finally {
       setIsSavingComment(false)
+    }
+  }
+
+  const handleMarkComplete = async (completed: boolean) => {
+    if (!submissionId) return
+
+    setIsMarkingComplete(true)
+    try {
+      const result = await markSubmissionComplete(submissionId, completed)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        setIsCompleted(completed)
+        toast.success(completed ? 'Submission marked as done!' : 'Submission reopened')
+      }
+    } finally {
+      setIsMarkingComplete(false)
     }
   }
 
@@ -181,6 +204,54 @@ export function SubmissionForm({
               ? "You've already submitted today. You can still add more assets above."
               : 'You have existing submissions for this date. You can add more assets above.'}
           </p>
+        )}
+
+        {/* Mark as Done / Done status */}
+        {hasSubmitted && existingAssets.length > 0 && (
+          <div className="pt-2 border-t">
+            {isCompleted ? (
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <div className="flex items-center gap-2 text-green-700">
+                  <CircleCheck className="h-5 w-5" />
+                  <span className="text-sm font-medium">Marked as done — ready for review</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleMarkComplete(false)}
+                  disabled={isMarkingComplete}
+                  className="text-green-700 hover:text-green-800 hover:bg-green-100"
+                >
+                  {isMarkingComplete ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                      Undo
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={() => handleMarkComplete(true)}
+                disabled={isMarkingComplete}
+                className="w-full"
+              >
+                {isMarkingComplete ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CircleCheck className="mr-2 h-4 w-4" />
+                    Mark as Done
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

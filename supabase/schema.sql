@@ -38,6 +38,7 @@ CREATE TABLE public.submissions (
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     submission_date DATE NOT NULL DEFAULT CURRENT_DATE,
     comment TEXT,
+    is_completed BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     CONSTRAINT unique_daily_submission UNIQUE (user_id, submission_date)
@@ -164,7 +165,7 @@ BEGIN
             r.productivity,
             r.quality
         FROM public.submissions s
-        JOIN public.ratings r ON r.submission_id = s.id
+        LEFT JOIN public.ratings r ON r.submission_id = s.id
         WHERE s.submission_date >= start_date AND s.submission_date <= end_date
     ),
     asset_counts AS (
