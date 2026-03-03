@@ -33,7 +33,7 @@ export async function checkSubmission(targetDate?: string) {
 
   const { data } = await supabase
     .from('submissions')
-    .select('id, comment, assets(*)')
+    .select('id, comment, is_completed, assets(*)')
     .eq('user_id', user.id)
     .eq('submission_date', date)
     .single()
@@ -41,6 +41,7 @@ export async function checkSubmission(targetDate?: string) {
   type SubmissionWithAssets = {
     id: string
     comment: string | null
+    is_completed: boolean
     assets: { id: string; submission_id: string; storage_path: string; file_name: string; file_size: number | null; asset_type?: 'image' | 'video'; duration?: number | null; created_at: string }[]
   }
 
@@ -58,6 +59,7 @@ export async function checkSubmission(targetDate?: string) {
     submissionId: typedData?.id || null,
     existingAssets: assetsWithType,
     existingComment: typedData?.comment || null,
+    isCompleted: typedData?.is_completed || false,
     currentDate: date,
   }
 }
@@ -142,11 +144,11 @@ export async function createSubmission(assetFiles: { path: string; duration?: nu
     return { error: assetsError.message }
   }
 
-  // Mark submission as updated when new assets are added to an existing submission
+  // Mark submission as updated and reset is_completed when new assets are added to an existing submission
   if (hasSubmitted && submissionId) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('submissions') as any)
-      .update({ updated_at: new Date().toISOString() })
+      .update({ updated_at: new Date().toISOString(), is_completed: false })
       .eq('id', submissionId)
   }
 
@@ -200,14 +202,39 @@ export async function deleteAsset(assetId: string, storagePath: string) {
     return { error: error.message }
   }
 
-  // Mark submission as updated
+  // Mark submission as updated and reset is_completed
   if (asset?.submission_id) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('submissions') as any)
-      .update({ updated_at: new Date().toISOString() })
+      .update({ updated_at: new Date().toISOString(), is_completed: false })
       .eq('id', asset.submission_id)
   }
 
   revalidatePath('/submit')
+  return { success: true }
+}
+
+export async function markSubmissionComplete(submissionId: string, isCompleted: boolean) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('submissions') as any)
+    .update({ is_completed: isCompleted, updated_at: new Date().toISOString() })
+    .eq('id', submissionId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath('/submit')
+  revalidatePath('/judge', 'layout')
   return { success: true }
 }

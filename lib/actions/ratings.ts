@@ -23,6 +23,7 @@ export async function getSubmissionsForJudging(date?: string) {
   if (!user) return []
 
   // Build query with profile join and asset_type
+  // Only show submissions that designers have marked as completed
   let query = supabase
     .from('submissions')
     .select(
@@ -52,6 +53,7 @@ export async function getSubmissionsForJudging(date?: string) {
       )
     `
     )
+    .eq('is_completed', true)
     .order('submission_date', { ascending: false })
     .limit(500)
 
@@ -289,10 +291,11 @@ export async function getJudgingStats(date?: string) {
 
   if (!user) return null
 
-  // Build total submissions query
+  // Build total submissions query — only count completed submissions
   let totalQuery = supabase
     .from('submissions')
     .select('*', { count: 'exact', head: true })
+    .eq('is_completed', true)
 
   if (date) {
     totalQuery = totalQuery.eq('submission_date', date)

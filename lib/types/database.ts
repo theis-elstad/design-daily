@@ -41,6 +41,7 @@ export type Database = {
           user_id: string
           submission_date: string
           comment: string | null
+          is_completed: boolean
           created_at: string
           updated_at: string | null
         }
@@ -49,6 +50,7 @@ export type Database = {
           user_id: string
           submission_date?: string
           comment?: string | null
+          is_completed?: boolean
           created_at?: string
           updated_at?: string | null
         }
@@ -57,6 +59,7 @@ export type Database = {
           user_id?: string
           submission_date?: string
           comment?: string | null
+          is_completed?: boolean
           created_at?: string
           updated_at?: string | null
         }

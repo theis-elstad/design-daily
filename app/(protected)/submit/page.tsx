@@ -20,7 +20,7 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
   }
 
   const params = await searchParams
-  const { hasSubmitted, existingAssets, existingComment, currentDate, submissionId } = await checkSubmission(params.date)
+  const { hasSubmitted, existingAssets, existingComment, currentDate, submissionId, isCompleted } = await checkSubmission(params.date)
   const weekend = isWeekendDate(currentDate)
 
   return (
@@ -49,6 +49,7 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
         submissionId={submissionId}
         selectedDate={currentDate}
         isWeekend={weekend}
+        isCompleted={isCompleted}
       />
     </div>
   )
