@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Sparkles,
   Search,
-  Lightbulb,
+
   Type,
   Image,
   Check,
@@ -91,8 +91,7 @@ interface StageConfig {
 const STAGES: StageConfig[] = [
   { id: 'brand', label: 'Brand Research', icon: Search, description: 'Analysing brand positioning and voice' },
   { id: 'product', label: 'Product Analysis', icon: Search, description: 'Researching product features and audience' },
-  { id: 'ideas', label: 'Ad Ideas', icon: Lightbulb, description: 'Generating creative concepts' },
-  { id: 'copy', label: 'Ad Copy', icon: Type, description: 'Writing headlines and body copy' },
+  { id: 'copy', label: 'Ad Copy', icon: Type, description: 'Generating concepts and writing copy' },
   { id: 'creative', label: 'Ad Creative', icon: Image, description: 'Generating visual assets' },
 ]
 
@@ -340,8 +339,8 @@ export default function AdGenPage() {
 
   // Derive current stage index (which stage is active/next)
   const currentStageIndex = (() => {
-    if (state.creative.status === 'done' || state.creative.status === 'running') return 4
-    if (state.copy.status === 'done' || state.copy.status === 'running') return 3
+    if (state.creative.status === 'done' || state.creative.status === 'running') return 3
+    if (state.copy.status === 'done' || state.copy.status === 'running') return 2
     if (state.ideas.status === 'done' || state.ideas.status === 'running') return 2
     if (state.product.status === 'done' || state.product.status === 'running') return 1
     if (state.brand.status === 'done' || state.brand.status === 'running') return 0
@@ -553,22 +552,6 @@ export default function AdGenPage() {
     }
   }, [state, clearDownstream])
 
-  // Toggle idea selection
-  const toggleIdea = useCallback((index: number) => {
-    setState(prev => {
-      const next = new Set(prev.ideas.selected)
-      if (next.has(index)) {
-        next.delete(index)
-      } else if (next.size < 3) {
-        next.add(index)
-      } else {
-        toast.info('Select up to 3 ideas')
-        return prev
-      }
-      return { ...prev, ideas: { ...prev.ideas, selected: next } }
-    })
-  }, [])
-
   // Download image
   const downloadImage = useCallback((creative: AdCreative, index: number) => {
     const link = document.createElement('a')
@@ -675,8 +658,13 @@ export default function AdGenPage() {
       {hasStarted && (
         <div className="space-y-3">
           {STAGES.map((config, i) => {
-            const stageState = state[config.id]
-            const status = (stageState as any).status as StageStatus
+            // For the copy card, fold the hidden ideas stage into copy's visible status
+            const rawStatus = (state[config.id] as any).status as StageStatus
+            const status: StageStatus = config.id === 'copy'
+              ? (state.ideas.status === 'running' ? 'running'
+                : state.ideas.status === 'error' ? 'error'
+                : rawStatus)
+              : rawStatus
             const expanded = state.expandedStage === config.id
 
             return (
@@ -693,8 +681,6 @@ export default function AdGenPage() {
                     <span>{state.brand.data.brandName} · {state.brand.data.industry} {state.brand.cached && '(cached)'}</span>
                   ) : config.id === 'product' && state.product.data ? (
                     <span>{state.product.data.productName} · {state.product.data.price}</span>
-                  ) : config.id === 'ideas' && state.ideas.data ? (
-                    <span>{state.ideas.data.length} ideas · {state.ideas.selected.size} selected</span>
                   ) : config.id === 'copy' && state.copy.data ? (
                     <span>{state.copy.data.length} copy sets generated</span>
                   ) : config.id === 'creative' && state.creative.data ? (
@@ -747,46 +733,6 @@ export default function AdGenPage() {
                     </div>
                     <Button variant="outline" size="sm" onClick={() => rerunStage('product')}>
                       <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Re-run Product Research
-                    </Button>
-                  </div>
-                )}
-
-                {/* ── Ad Ideas ── */}
-                {config.id === 'ideas' && state.ideas.data && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-500">Select up to 3 ideas to generate copy and creatives for.</p>
-                    <div className="grid gap-2">
-                      {state.ideas.data.map((idea, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => toggleIdea(idx)}
-                          className={`text-left p-3 rounded-lg border-2 transition-all ${
-                            state.ideas.selected.has(idx)
-                              ? 'border-gray-900 bg-gray-50'
-                              : 'border-gray-100 hover:border-gray-200 bg-white'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                <span className="font-medium text-gray-900 text-sm">{idea.title}</span>
-                                <Badge variant="outline" className="text-[10px]">{idea.adFormat}</Badge>
-                                <Badge variant="secondary" className="text-[10px]">{idea.coreDesire}</Badge>
-                              </div>
-                              <p className="text-sm text-gray-700 font-medium">"{idea.headline}"</p>
-                              <p className="text-xs text-gray-500 mt-0.5">{idea.messagingAngle}</p>
-                            </div>
-                            <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5 ${
-                              state.ideas.selected.has(idx) ? 'bg-gray-900 border-gray-900' : 'border-gray-300'
-                            }`}>
-                              {state.ideas.selected.has(idx) && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => rerunStage('ideas')}>
-                      <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Regenerate Ideas
                     </Button>
                   </div>
                 )}
@@ -867,8 +813,15 @@ export default function AdGenPage() {
                 {/* Error state with retry */}
                 {status === 'error' && (
                   <div className="space-y-3">
-                    <p className="text-sm text-red-600">{(stageState as any).error || 'Something went wrong'}</p>
-                    <Button variant="outline" size="sm" onClick={() => rerunStage(config.id)}>
+                    <p className="text-sm text-red-600">{
+                      (config.id === 'copy' && state.ideas.status === 'error'
+                        ? state.ideas.error
+                        : (state[config.id] as any).error) || 'Something went wrong'
+                    }</p>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      const retryId = config.id === 'copy' && state.ideas.status === 'error' ? 'ideas' as StageId : config.id
+                      rerunStage(retryId)
+                    }}>
                       <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Retry
                     </Button>
                   </div>
