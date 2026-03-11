@@ -58,28 +58,29 @@ Return a JSON array of exactly 6 ad concept objects with this structure:
 Make each concept genuinely different — vary the emotional angle, format, and audience segment.`
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
-  const { brandResearch, productResearch, count = 6 } = body as {
-    brandResearch: Record<string, unknown>
-    productResearch: Record<string, unknown>
-    count?: number
-  }
+    const body = await request.json()
+    const { brandResearch, productResearch, count = 6 } = body as {
+      brandResearch: Record<string, unknown>
+      productResearch: Record<string, unknown>
+      count?: number
+    }
 
-  if (!brandResearch || !productResearch) {
-    return NextResponse.json({ error: 'brandResearch and productResearch are required' }, { status: 400 })
-  }
+    if (!brandResearch || !productResearch) {
+      return NextResponse.json({ error: 'brandResearch and productResearch are required' }, { status: 400 })
+    }
 
-  // Shuffle desires and heuristics for variety across runs
-  const desires = shuffle(CORE_DESIRES).slice(0, 8).join(', ')
-  const heuristics = shuffle(HEURISTICS).slice(0, 6).join(', ')
+    // Shuffle desires and heuristics for variety across runs
+    const desires = shuffle(CORE_DESIRES).slice(0, 8).join(', ')
+    const heuristics = shuffle(HEURISTICS).slice(0, 6).join(', ')
 
-  const userPrompt = `Generate ${count} ad concepts for this product.
+    const userPrompt = `Generate ${count} ad concepts for this product.
 
 CORE DESIRES to draw from (pick the most relevant): ${desires}
 HEURISTICS to apply: ${heuristics}
@@ -90,20 +91,27 @@ ${JSON.stringify(brandResearch, null, 2)}
 PRODUCT CONTEXT:
 ${JSON.stringify(productResearch, null, 2)}`
 
-  const raw = await openAIChat(AD_IDEAS_SYSTEM, userPrompt, {
-    model: 'gpt-4o',
-    maxTokens: 2500,
-    jsonMode: true,
-  })
+    const raw = await openAIChat(AD_IDEAS_SYSTEM, userPrompt, {
+      model: 'gpt-4o',
+      maxTokens: 2500,
+      jsonMode: true,
+    })
 
-  let ideas: unknown[]
-  try {
-    const parsed = JSON.parse(raw)
-    // Handle both array and {ideas: [...]} shapes
-    ideas = Array.isArray(parsed) ? parsed : (parsed.ideas ?? parsed.concepts ?? [])
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse ad ideas' }, { status: 500 })
+    let ideas: unknown[]
+    try {
+      const parsed = JSON.parse(raw)
+      // Handle both array and {ideas: [...]} shapes
+      ideas = Array.isArray(parsed) ? parsed : (parsed.ideas ?? parsed.concepts ?? [])
+    } catch {
+      return NextResponse.json({ error: 'Failed to parse ad ideas' }, { status: 500 })
+    }
+
+    return NextResponse.json({ ideas })
+  } catch (err) {
+    console.error('Ad ideas error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Ad ideas generation failed' },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({ ideas })
 }

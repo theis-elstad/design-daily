@@ -74,62 +74,70 @@ const PRODUCT_RESEARCH_SYSTEM = `You are a product marketing expert. Analyze the
 Be specific and actionable. Focus on what makes this product compelling to its target audience.`
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
-  const { productUrl } = body as { productUrl: string }
+    const body = await request.json()
+    const { productUrl } = body as { productUrl: string }
 
-  if (!productUrl) {
-    return NextResponse.json({ error: 'productUrl is required' }, { status: 400 })
-  }
+    if (!productUrl) {
+      return NextResponse.json({ error: 'productUrl is required' }, { status: 400 })
+    }
 
-  let productContext = ''
+    let productContext = ''
 
-  // Try Shopify JSON API first
-  const shopifyInfo = extractShopifyHandle(productUrl)
-  if (shopifyInfo) {
-    const shopifyProduct = await fetchShopifyProduct(shopifyInfo.domain, shopifyInfo.handle)
-    if (shopifyProduct) {
-      const variantSummary = shopifyProduct.variants
-        .slice(0, 5)
-        .map((v) => `${v.title}: $${v.price}`)
-        .join(', ')
-      const description = shopifyProduct.body_html
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 2000)
+    // Try Shopify JSON API first
+    const shopifyInfo = extractShopifyHandle(productUrl)
+    if (shopifyInfo) {
+      const shopifyProduct = await fetchShopifyProduct(shopifyInfo.domain, shopifyInfo.handle)
+      if (shopifyProduct) {
+        const variantSummary = shopifyProduct.variants
+          .slice(0, 5)
+          .map((v) => `${v.title}: $${v.price}`)
+          .join(', ')
+        const description = shopifyProduct.body_html
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 2000)
 
-      productContext = `Product Name: ${shopifyProduct.title}
+        productContext = `Product Name: ${shopifyProduct.title}
 Type: ${shopifyProduct.product_type}
 Vendor: ${shopifyProduct.vendor}
 Tags: ${shopifyProduct.tags.join(', ')}
 Variants & Pricing: ${variantSummary}
 Description: ${description}`
+      }
     }
+
+    // Fallback: scrape the page
+    if (!productContext) {
+      const scraped = await scrapeProductPage(productUrl)
+      productContext = scraped || `Product URL: ${productUrl} (content unavailable)`
+    }
+
+    const userPrompt = `Analyze this product:\nURL: ${productUrl}\n\n${productContext}`
+
+    const raw = await generateAISummary(PRODUCT_RESEARCH_SYSTEM, userPrompt)
+
+    let research: Record<string, unknown>
+    try {
+      const match = raw.match(/\{[\s\S]*\}/)
+      research = JSON.parse(match?.[0] ?? raw)
+    } catch {
+      return NextResponse.json({ error: 'Failed to parse product research' }, { status: 500 })
+    }
+
+    return NextResponse.json({ research })
+  } catch (err) {
+    console.error('Product research error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Product research failed' },
+      { status: 500 }
+    )
   }
-
-  // Fallback: scrape the page
-  if (!productContext) {
-    const scraped = await scrapeProductPage(productUrl)
-    productContext = scraped || `Product URL: ${productUrl} (content unavailable)`
-  }
-
-  const userPrompt = `Analyze this product:\nURL: ${productUrl}\n\n${productContext}`
-
-  const raw = await generateAISummary(PRODUCT_RESEARCH_SYSTEM, userPrompt)
-
-  let research: Record<string, unknown>
-  try {
-    const match = raw.match(/\{[\s\S]*\}/)
-    research = JSON.parse(match?.[0] ?? raw)
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse product research' }, { status: 500 })
-  }
-
-  return NextResponse.json({ research })
 }

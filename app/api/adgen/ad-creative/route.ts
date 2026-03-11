@@ -26,32 +26,33 @@ const FORMAT_ASPECT_RATIOS: Record<string, string> = {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
-  const { adIdea, adCopy, brandResearch, productResearch } = body as {
-    adIdea: Record<string, unknown>
-    adCopy: { headlines: string[]; primaryTexts: string[]; descriptions: string[] }
-    brandResearch: Record<string, unknown>
-    productResearch: Record<string, unknown>
-  }
+    const body = await request.json()
+    const { adIdea, adCopy, brandResearch, productResearch } = body as {
+      adIdea: Record<string, unknown>
+      adCopy: { headlines: string[]; primaryTexts: string[]; descriptions: string[] }
+      brandResearch: Record<string, unknown>
+      productResearch: Record<string, unknown>
+    }
 
-  if (!adIdea || !brandResearch || !productResearch) {
-    return NextResponse.json(
-      { error: 'adIdea, brandResearch, and productResearch are required' },
-      { status: 400 }
-    )
-  }
+    if (!adIdea || !brandResearch || !productResearch) {
+      return NextResponse.json(
+        { error: 'adIdea, brandResearch, and productResearch are required' },
+        { status: 500 }
+      )
+    }
 
-  const adFormat = (adIdea.adFormat as string) || 'feed_image'
-  const aspectRatio = FORMAT_ASPECT_RATIOS[adFormat] ?? '1:1'
+    const adFormat = (adIdea.adFormat as string) || 'feed_image'
+    const aspectRatio = FORMAT_ASPECT_RATIOS[adFormat] ?? '1:1'
 
-  // Step 1: Generate image prompt via Claude
-  const imagePromptRequest = `Create an image generation prompt for this ad creative:
+    // Step 1: Generate image prompt via Claude
+    const imagePromptRequest = `Create an image generation prompt for this ad creative:
 
 AD CONCEPT:
 Title: ${adIdea.title}
@@ -70,45 +71,49 @@ Type: ${productResearch.productType}
 
 HEADLINE TO FEATURE: ${adCopy?.headlines?.[0] ?? ''}`
 
-  const imagePrompt = await generateAISummary(IMAGE_PROMPT_SYSTEM, imagePromptRequest)
+    const imagePrompt = await generateAISummary(IMAGE_PROMPT_SYSTEM, imagePromptRequest)
 
-  // Step 2: Generate image via Gemini
-  let imageBase64: string | null = null
-  let mimeType = 'image/png'
-  let generatedBy = 'gemini-pro'
+    // Step 2: Generate image via Gemini
+    let imageBase64: string | null = null
+    let mimeType = 'image/png'
+    let generatedBy = 'gemini-pro'
 
-  // Try with gemini-2.0-flash-preview-image-generation first, fall back to 3-pro
-  const modelsToTry = ['gemini-2.0-flash-preview-image-generation', 'gemini-3-pro-image-preview']
+    // Try with gemini-2.0-flash-preview-image-generation first, fall back to 3-pro
+    const modelsToTry = ['gemini-2.0-flash-preview-image-generation', 'gemini-3-pro-image-preview']
 
-  for (const model of modelsToTry) {
-    try {
-      // Temporarily override the model via environment or use callGemini directly
-      // callGemini uses the model from lib/gemini.ts — we call it and catch failures
-      const images = await callGemini([textPart(imagePrompt)], { aspectRatio })
-      if (images.length > 0) {
-        imageBase64 = images[0].base64
-        mimeType = images[0].mimeType
-        generatedBy = model
-        break
-      }
-    } catch (err) {
-      // Try next model
-      if (model === modelsToTry[modelsToTry.length - 1]) {
-        console.error('All Gemini models failed:', err)
+    for (const model of modelsToTry) {
+      try {
+        const images = await callGemini([textPart(imagePrompt)], { aspectRatio })
+        if (images.length > 0) {
+          imageBase64 = images[0].base64
+          mimeType = images[0].mimeType
+          generatedBy = model
+          break
+        }
+      } catch (err) {
+        if (model === modelsToTry[modelsToTry.length - 1]) {
+          console.error('All Gemini models failed:', err)
+        }
       }
     }
-  }
 
-  if (!imageBase64) {
-    return NextResponse.json({ error: 'Image generation failed' }, { status: 500 })
-  }
+    if (!imageBase64) {
+      return NextResponse.json({ error: 'Image generation failed' }, { status: 500 })
+    }
 
-  return NextResponse.json({
-    imageBase64,
-    mimeType,
-    imagePrompt,
-    generatedBy,
-    adFormat,
-    timestamp: new Date().toISOString(),
-  })
+    return NextResponse.json({
+      imageBase64,
+      mimeType,
+      imagePrompt,
+      generatedBy,
+      adFormat,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (err) {
+    console.error('Ad creative error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Ad creative generation failed' },
+      { status: 500 }
+    )
+  }
 }

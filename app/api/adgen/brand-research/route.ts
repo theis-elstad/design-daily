@@ -51,59 +51,67 @@ const BRAND_RESEARCH_SYSTEM = `You are a brand strategist and marketing expert. 
 Be specific and actionable. Base your analysis on the website content provided, or on your knowledge of the brand if content is unavailable.`
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const body = await request.json()
-  const { brandUrl } = body as { brandUrl: string }
-
-  if (!brandUrl) {
-    return NextResponse.json({ error: 'brandUrl is required' }, { status: 400 })
-  }
-
-  const domain = extractDomain(brandUrl)
-
-  // Check cache
-  const { data: cached } = await (supabase as any)
-    .from('adgen_brand_research')
-    .select('research, brand_name')
-    .eq('brand_url', domain)
-    .single()
-
-  if (cached) {
-    return NextResponse.json({ research: cached.research, brandName: cached.brand_name, cached: true })
-  }
-
-  // Scrape website
-  const pageContent = await scrapeWebsite(`https://${domain}`)
-
-  const userPrompt = pageContent
-    ? `Analyze this brand: ${domain}\n\nWebsite content:\n${pageContent}`
-    : `Analyze this brand based on your knowledge: ${domain}`
-
-  const raw = await generateAISummary(BRAND_RESEARCH_SYSTEM, userPrompt)
-
-  let research: Record<string, unknown>
   try {
-    // Extract JSON from response (may have surrounding text)
-    const match = raw.match(/\{[\s\S]*\}/)
-    research = JSON.parse(match?.[0] ?? raw)
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse brand research' }, { status: 500 })
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const body = await request.json()
+    const { brandUrl } = body as { brandUrl: string }
+
+    if (!brandUrl) {
+      return NextResponse.json({ error: 'brandUrl is required' }, { status: 400 })
+    }
+
+    const domain = extractDomain(brandUrl)
+
+    // Check cache
+    const { data: cached } = await (supabase as any)
+      .from('adgen_brand_research')
+      .select('research, brand_name')
+      .eq('brand_url', domain)
+      .single()
+
+    if (cached) {
+      return NextResponse.json({ research: cached.research, brandName: cached.brand_name, cached: true })
+    }
+
+    // Scrape website
+    const pageContent = await scrapeWebsite(`https://${domain}`)
+
+    const userPrompt = pageContent
+      ? `Analyze this brand: ${domain}\n\nWebsite content:\n${pageContent}`
+      : `Analyze this brand based on your knowledge: ${domain}`
+
+    const raw = await generateAISummary(BRAND_RESEARCH_SYSTEM, userPrompt)
+
+    let research: Record<string, unknown>
+    try {
+      // Extract JSON from response (may have surrounding text)
+      const match = raw.match(/\{[\s\S]*\}/)
+      research = JSON.parse(match?.[0] ?? raw)
+    } catch {
+      return NextResponse.json({ error: 'Failed to parse brand research' }, { status: 500 })
+    }
+
+    const brandName = (research.brandName as string) || domain
+
+    // Save to cache
+    await (supabase as any).from('adgen_brand_research').upsert({
+      id: crypto.randomUUID(),
+      brand_url: domain,
+      brand_name: brandName,
+      research,
+    })
+
+    return NextResponse.json({ research, brandName, cached: false })
+  } catch (err) {
+    console.error('Brand research error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Brand research failed' },
+      { status: 500 }
+    )
   }
-
-  const brandName = (research.brandName as string) || domain
-
-  // Save to cache
-  await (supabase as any).from('adgen_brand_research').upsert({
-    id: crypto.randomUUID(),
-    brand_url: domain,
-    brand_name: brandName,
-    research,
-  })
-
-  return NextResponse.json({ research, brandName, cached: false })
 }

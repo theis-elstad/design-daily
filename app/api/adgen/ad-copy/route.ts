@@ -21,28 +21,29 @@ Guidelines:
 Write copy that feels native to social media — conversational, specific, emotionally resonant.`
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
-  const { adIdea, brandResearch, productResearch, language = 'English' } = body as {
-    adIdea: Record<string, unknown>
-    brandResearch: Record<string, unknown>
-    productResearch: Record<string, unknown>
-    language?: string
-  }
+    const body = await request.json()
+    const { adIdea, brandResearch, productResearch, language = 'English' } = body as {
+      adIdea: Record<string, unknown>
+      brandResearch: Record<string, unknown>
+      productResearch: Record<string, unknown>
+      language?: string
+    }
 
-  if (!adIdea || !brandResearch || !productResearch) {
-    return NextResponse.json(
-      { error: 'adIdea, brandResearch, and productResearch are required' },
-      { status: 400 }
-    )
-  }
+    if (!adIdea || !brandResearch || !productResearch) {
+      return NextResponse.json(
+        { error: 'adIdea, brandResearch, and productResearch are required' },
+        { status: 400 }
+      )
+    }
 
-  const userPrompt = `Write high-converting ad copy in ${language} for this ad concept.
+    const userPrompt = `Write high-converting ad copy in ${language} for this ad concept.
 
 AD CONCEPT:
 ${JSON.stringify(adIdea, null, 2)}
@@ -58,18 +59,25 @@ Price: ${productResearch.price}
 Key Benefits: ${Array.isArray(productResearch.keyBenefits) ? (productResearch.keyBenefits as string[]).join(', ') : ''}
 Emotional Triggers: ${Array.isArray(productResearch.emotionalTriggers) ? (productResearch.emotionalTriggers as string[]).join(', ') : ''}`
 
-  const raw = await openAIChat(AD_COPY_SYSTEM, userPrompt, {
-    model: 'gpt-4o',
-    maxTokens: 1000,
-    jsonMode: true,
-  })
+    const raw = await openAIChat(AD_COPY_SYSTEM, userPrompt, {
+      model: 'gpt-4o',
+      maxTokens: 1000,
+      jsonMode: true,
+    })
 
-  let copy: Record<string, string[]>
-  try {
-    copy = JSON.parse(raw)
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse ad copy' }, { status: 500 })
+    let copy: Record<string, string[]>
+    try {
+      copy = JSON.parse(raw)
+    } catch {
+      return NextResponse.json({ error: 'Failed to parse ad copy' }, { status: 500 })
+    }
+
+    return NextResponse.json({ copy })
+  } catch (err) {
+    console.error('Ad copy error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Ad copy generation failed' },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({ copy })
 }
