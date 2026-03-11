@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@google/genai": "^1.41.0",
+    "nanoid": "^5.1.5",
+    "openai": "^5.10.0",
     "@cloudflare/next-on-pages": "^1.13.16",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",

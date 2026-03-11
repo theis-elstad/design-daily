@@ -41,6 +41,7 @@ export default async function JudgePage({ searchParams }: JudgePageProps) {
       <JudgeSubmissionList
         submissions={submissions}
         initialTab={tab}
+        isDateFiltered={!!date}
       />
     </div>
   )
