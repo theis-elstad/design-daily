@@ -1,7 +1,5 @@
 'use client'
 
-export const runtime = 'edge'
-
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import {
