@@ -9,13 +9,11 @@ import {
   Sparkles,
   Search,
 
-  Type,
   Image,
   Check,
   RefreshCw,
   Download,
   BookmarkPlus,
-  Copy,
   ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -62,12 +60,6 @@ interface AdIdea {
   adFormat: string
 }
 
-interface AdCopy {
-  headlines: string[]
-  primaryTexts: string[]
-  descriptions: string[]
-}
-
 interface AdCreative {
   imageBase64: string
   mimeType: string
@@ -76,10 +68,9 @@ interface AdCreative {
   adFormat: string
   timestamp: string
   idea: AdIdea
-  copy: AdCopy
 }
 
-type StageId = 'brand' | 'product' | 'ideas' | 'copy' | 'creative'
+type StageId = 'brand' | 'product' | 'ideas' | 'creative'
 
 interface StageConfig {
   id: StageId
@@ -91,8 +82,7 @@ interface StageConfig {
 const STAGES: StageConfig[] = [
   { id: 'brand', label: 'Brand Research', icon: Search, description: 'Analysing brand positioning and voice' },
   { id: 'product', label: 'Product Analysis', icon: Search, description: 'Researching product features and audience' },
-  { id: 'copy', label: 'Ad Copy', icon: Type, description: 'Generating concepts and writing copy' },
-  { id: 'creative', label: 'Ad Creative', icon: Image, description: 'Generating visual assets' },
+  { id: 'creative', label: 'Ad Creative', icon: Image, description: 'Generating ad concepts and visuals' },
 ]
 
 type StageStatus = 'idle' | 'running' | 'done' | 'error'
@@ -103,7 +93,6 @@ interface PipelineState {
   brand: { status: StageStatus; data: BrandResearch | null; cached: boolean; error?: string }
   product: { status: StageStatus; data: ProductResearch | null; error?: string }
   ideas: { status: StageStatus; data: AdIdea[] | null; selected: Set<number>; error?: string }
-  copy: { status: StageStatus; data: Array<{ idea: AdIdea; copy: AdCopy }> | null; error?: string }
   creative: { status: StageStatus; data: AdCreative[] | null; error?: string }
   expandedStage: StageId | null
   pipelineRunning: boolean
@@ -115,7 +104,6 @@ const initialState: PipelineState = {
   brand: { status: 'idle', data: null, cached: false },
   product: { status: 'idle', data: null },
   ideas: { status: 'idle', data: null, selected: new Set() },
-  copy: { status: 'idle', data: null },
   creative: { status: 'idle', data: null },
   expandedStage: null,
   pipelineRunning: false,
@@ -151,22 +139,13 @@ async function fetchAdIdeas(brandResearch: BrandResearch, productResearch: Produ
   return safeFetch('/api/adgen/ad-ideas', { brandResearch, productResearch }) as any
 }
 
-async function fetchAdCopy(
-  adIdea: AdIdea,
-  brandResearch: BrandResearch,
-  productResearch: ProductResearch
-): Promise<{ copy: AdCopy }> {
-  return safeFetch('/api/adgen/ad-copy', { adIdea, brandResearch, productResearch }) as any
-}
-
 async function fetchAdCreative(
   adIdea: AdIdea,
-  adCopy: AdCopy,
   brandResearch: BrandResearch,
   productResearch: ProductResearch
 ): Promise<AdCreative> {
-  const data = await safeFetch('/api/adgen/ad-creative', { adIdea, adCopy, brandResearch, productResearch })
-  return { ...data, idea: adIdea, copy: adCopy } as AdCreative
+  const data = await safeFetch('/api/adgen/ad-creative', { adIdea, brandResearch, productResearch })
+  return { ...data, idea: adIdea } as AdCreative
 }
 
 // ─── Stage Card wrapper ─────────────────────────────────────────────────────
@@ -277,33 +256,6 @@ function TagsList({ label, tags }: { label: string; tags: string[] }) {
   )
 }
 
-function CopyGroup({ label, items, charLimit }: { label: string; items: string[]; charLimit: number }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
-        <span className="text-[10px] text-gray-300">max {charLimit}</span>
-      </div>
-      {items?.map((item, i) => (
-        <div key={i} className="flex items-start gap-2 group">
-          <span className="text-xs text-gray-300 mt-1.5 font-mono w-4 shrink-0">{i + 1}.</span>
-          <div className="flex-1 relative">
-            <p className={`text-sm p-2 rounded-lg bg-white/60 border border-gray-100 ${
-              item.length > charLimit ? 'border-red-200' : ''
-            }`}>{item}</p>
-            <button
-              onClick={() => { navigator.clipboard.writeText(item); toast.success('Copied') }}
-              className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100"
-            >
-              <Copy className="w-3 h-3 text-gray-400" />
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ─── Running stage skeleton ──────────────────────────────────────────────
 
 function StageLoadingSkeleton() {
@@ -339,8 +291,7 @@ export default function AdGenPage() {
 
   // Derive current stage index (which stage is active/next)
   const currentStageIndex = (() => {
-    if (state.creative.status === 'done' || state.creative.status === 'running') return 3
-    if (state.copy.status === 'done' || state.copy.status === 'running') return 2
+    if (state.creative.status === 'done' || state.creative.status === 'running') return 2
     if (state.ideas.status === 'done' || state.ideas.status === 'running') return 2
     if (state.product.status === 'done' || state.product.status === 'running') return 1
     if (state.brand.status === 'done' || state.brand.status === 'running') return 0
@@ -349,7 +300,7 @@ export default function AdGenPage() {
 
   // Clear downstream stages from a given stage
   const clearDownstream = useCallback((fromStage: StageId) => {
-    const stageOrder: StageId[] = ['brand', 'product', 'ideas', 'copy', 'creative']
+    const stageOrder: StageId[] = ['brand', 'product', 'ideas', 'creative']
     const startIdx = stageOrder.indexOf(fromStage)
     setState(prev => {
       const next = { ...prev }
@@ -391,7 +342,6 @@ export default function AdGenPage() {
       brand: { status: 'idle', data: null, cached: false },
       product: { status: 'idle', data: null },
       ideas: { status: 'idle', data: null, selected: new Set() },
-      copy: { status: 'idle', data: null },
       creative: { status: 'idle', data: null },
     }))
 
@@ -428,29 +378,14 @@ export default function AdGenPage() {
         ideas: { status: 'done', data: ideasResult.ideas, selected: autoSelected },
       }))
 
-      // Stage 4: Ad Copy (for selected ideas)
-      if (abort.signal.aborted) return
-      setState(prev => ({ ...prev, copy: { ...prev.copy, status: 'running' } }))
-      const selectedIdeas = Array.from(autoSelected).map(i => ideasResult.ideas[i])
-      const copyResults = await Promise.all(
-        selectedIdeas.map(async idea => {
-          const result = await fetchAdCopy(idea, brandResult.research, productResult.research)
-          return { idea, copy: result.copy }
-        })
-      )
-      if (abort.signal.aborted) return
-      setState(prev => ({
-        ...prev,
-        copy: { status: 'done', data: copyResults },
-      }))
-
-      // Stage 5: Ad Creatives
+      // Stage 4: Ad Creatives (for selected ideas)
       if (abort.signal.aborted) return
       setState(prev => ({ ...prev, creative: { ...prev.creative, status: 'running' } }))
+      const selectedIdeas = Array.from(autoSelected).map(i => ideasResult.ideas[i])
       const creatives: AdCreative[] = []
-      for (const { idea, copy } of copyResults) {
+      for (const idea of selectedIdeas) {
         if (abort.signal.aborted) return
-        const creative = await fetchAdCreative(idea, copy, brandResult.research, productResult.research)
+        const creative = await fetchAdCreative(idea, brandResult.research, productResult.research)
         creatives.push(creative)
         setState(prev => ({
           ...prev,
@@ -472,7 +407,7 @@ export default function AdGenPage() {
       // Mark whichever stage was running as errored
       setState(prev => {
         const next = { ...prev, pipelineRunning: false }
-        const stages: StageId[] = ['brand', 'product', 'ideas', 'copy', 'creative']
+        const stages: StageId[] = ['brand', 'product', 'ideas', 'creative']
         for (const s of stages) {
           if ((next as any)[s].status === 'running') {
             (next as any)[s] = { ...(next as any)[s], status: 'error', error: msg }
@@ -513,24 +448,12 @@ export default function AdGenPage() {
           ...prev,
           ideas: { status: 'done', data: result.ideas, selected: autoSelected },
         }))
-      } else if (stageId === 'copy' && brand.data && product.data && ideas.data) {
-        setState(prev => ({ ...prev, copy: { ...prev.copy, status: 'running' } }))
-        const selectedIdeas = Array.from(ideas.selected).map(i => ideas.data![i])
-        const results = await Promise.all(
-          selectedIdeas.map(async idea => {
-            const result = await fetchAdCopy(idea, brand.data!, product.data!)
-            return { idea, copy: result.copy }
-          })
-        )
-        setState(prev => ({
-          ...prev,
-          copy: { status: 'done', data: results },
-        }))
-      } else if (stageId === 'creative' && brand.data && product.data && state.copy.data) {
+      } else if (stageId === 'creative' && brand.data && product.data && ideas.data) {
         setState(prev => ({ ...prev, creative: { ...prev.creative, status: 'running' } }))
+        const selectedIdeas = Array.from(ideas.selected).map(i => ideas.data![i])
         const creatives: AdCreative[] = []
-        for (const { idea, copy } of state.copy.data) {
-          const creative = await fetchAdCreative(idea, copy, brand.data!, product.data!)
+        for (const idea of selectedIdeas) {
+          const creative = await fetchAdCreative(idea, brand.data!, product.data!)
           creatives.push(creative)
           setState(prev => ({
             ...prev,
@@ -570,7 +493,6 @@ export default function AdGenPage() {
           brandUrl: state.brandUrl,
           productUrl: state.productUrl,
           idea: creative.idea,
-          copy: creative.copy,
           imagePrompt: creative.imagePrompt,
           generatedBy: creative.generatedBy,
           adFormat: creative.adFormat,
@@ -658,9 +580,9 @@ export default function AdGenPage() {
       {hasStarted && (
         <div className="space-y-3">
           {STAGES.map((config, i) => {
-            // For the copy card, fold the hidden ideas stage into copy's visible status
+            // For the creative card, fold hidden ideas stage into its visible status
             const rawStatus = (state[config.id] as any).status as StageStatus
-            const status: StageStatus = config.id === 'copy'
+            const status: StageStatus = config.id === 'creative'
               ? (state.ideas.status === 'running' ? 'running'
                 : state.ideas.status === 'error' ? 'error'
                 : rawStatus)
@@ -681,8 +603,6 @@ export default function AdGenPage() {
                     <span>{state.brand.data.brandName} · {state.brand.data.industry} {state.brand.cached && '(cached)'}</span>
                   ) : config.id === 'product' && state.product.data ? (
                     <span>{state.product.data.productName} · {state.product.data.price}</span>
-                  ) : config.id === 'copy' && state.copy.data ? (
-                    <span>{state.copy.data.length} copy sets generated</span>
                   ) : config.id === 'creative' && state.creative.data ? (
                     <span>{state.creative.data.length} creative{state.creative.data.length !== 1 ? 's' : ''} generated</span>
                   ) : undefined
@@ -737,30 +657,6 @@ export default function AdGenPage() {
                   </div>
                 )}
 
-                {/* ── Ad Copy ── */}
-                {config.id === 'copy' && state.copy.data && (
-                  <div className="space-y-5">
-                    {state.copy.data.map((result, idx) => (
-                      <div key={idx} className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm text-gray-900">{result.idea.title}</span>
-                          <Badge variant="outline" className="text-[10px]">{result.idea.adFormat}</Badge>
-                        </div>
-                        <div className="p-2.5 bg-gray-50 rounded-lg">
-                          <p className="text-xs text-gray-500">{result.idea.messagingAngle}</p>
-                        </div>
-                        <CopyGroup label="Headlines" items={result.copy.headlines} charLimit={30} />
-                        <CopyGroup label="Primary Texts" items={result.copy.primaryTexts} charLimit={125} />
-                        <CopyGroup label="Descriptions" items={result.copy.descriptions} charLimit={30} />
-                        {idx < state.copy.data!.length - 1 && <hr className="border-gray-100" />}
-                      </div>
-                    ))}
-                    <Button variant="outline" size="sm" onClick={() => rerunStage('copy')}>
-                      <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Regenerate Copy
-                    </Button>
-                  </div>
-                )}
-
                 {/* ── Ad Creatives ── */}
                 {config.id === 'creative' && state.creative.data && (
                   <div className="space-y-5">
@@ -789,12 +685,6 @@ export default function AdGenPage() {
                               </Button>
                             </div>
                           </div>
-                          <div className="space-y-1.5">
-                            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Headlines</p>
-                            {creative.copy.headlines.map((h, j) => (
-                              <p key={j} className="text-sm text-gray-800">"{h}"</p>
-                            ))}
-                          </div>
                           <details className="text-xs text-gray-400">
                             <summary className="cursor-pointer hover:text-gray-600">Image prompt</summary>
                             <p className="mt-1 leading-relaxed">{creative.imagePrompt}</p>
@@ -814,12 +704,12 @@ export default function AdGenPage() {
                 {status === 'error' && (
                   <div className="space-y-3">
                     <p className="text-sm text-red-600">{
-                      (config.id === 'copy' && state.ideas.status === 'error'
+                      (config.id === 'creative' && state.ideas.status === 'error'
                         ? state.ideas.error
                         : (state[config.id] as any).error) || 'Something went wrong'
                     }</p>
                     <Button variant="outline" size="sm" onClick={() => {
-                      const retryId = config.id === 'copy' && state.ideas.status === 'error' ? 'ideas' as StageId : config.id
+                      const retryId = config.id === 'creative' && state.ideas.status === 'error' ? 'ideas' as StageId : config.id
                       rerunStage(retryId)
                     }}>
                       <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Retry

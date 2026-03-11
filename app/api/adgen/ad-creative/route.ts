@@ -34,9 +34,8 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { adIdea, adCopy, brandResearch, productResearch } = body as {
+    const { adIdea, brandResearch, productResearch } = body as {
       adIdea: Record<string, unknown>
-      adCopy: { headlines: string[]; primaryTexts: string[]; descriptions: string[] }
       brandResearch: Record<string, unknown>
       productResearch: Record<string, unknown>
     }
@@ -69,7 +68,7 @@ PRODUCT:
 Name: ${productResearch.productName}
 Type: ${productResearch.productType}
 
-HEADLINE TO FEATURE: ${adCopy?.headlines?.[0] ?? ''}`
+HEADLINE: ${adIdea.headline ?? ''}`
 
     const imagePrompt = await generateAISummary(IMAGE_PROMPT_SYSTEM, imagePromptRequest)
 
