@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { Sparkles, Loader2, RotateCcw } from 'lucide-react'
+import { Sparkles, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UrlStep } from '@/components/adgen/url-step'
 import { SettingsStep } from '@/components/adgen/settings-step'
@@ -16,8 +16,9 @@ import type {
   SelectedImage,
   GenerationSettings,
   GeneratedCreative,
+  UrlType,
 } from '@/lib/types/adgen'
-import { DEFAULT_SETTINGS } from '@/lib/types/adgen'
+import { DEFAULT_SETTINGS, detectUrlType } from '@/lib/types/adgen'
 
 interface ProductImageData {
   src: string
@@ -57,42 +58,60 @@ export default function AdGenPage() {
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState('')
   const [showReset, setShowReset] = useState(false)
+  const [urlType, setUrlType] = useState<UrlType>('product')
+  const [researchLoading, setResearchLoading] = useState(false)
 
   // URL submit → parallel fetches → settings step
   const handleUrlSubmit = useCallback(async (submittedUrl: string) => {
     setUrl(submittedUrl)
+    const detectedType = detectUrlType(submittedUrl)
+    setUrlType(detectedType)
     setStep('settings')
     setProgress('Loading research and images...')
     setGenerating(true)
+    setResearchLoading(true)
 
     try {
-      const [brandRes, productRes, imagesRes] = await Promise.all([
+      // Always fetch brand research + images
+      const fetches: Promise<Record<string, any>>[] = [
         safeFetch('/api/adgen/brand-research', { brandUrl: submittedUrl }),
-        safeFetch('/api/adgen/product-research', { productUrl: submittedUrl }),
         safeFetch('/api/adgen/fetch-images', { url: submittedUrl }),
-      ])
+      ]
+
+      // Fetch product/collection research for non-brand URLs
+      if (detectedType !== 'brand') {
+        fetches.push(safeFetch('/api/adgen/product-research', { productUrl: submittedUrl }))
+      }
+
+      const results = await Promise.all(fetches)
+      const brandRes = results[0]
+      const imagesRes = results[1]
+      const productRes = results[2] // undefined for brand URLs
 
       setBrandResearch(brandRes.research as BrandResearch)
-      setProductResearch(productRes.research as ProductResearch)
       setProductImages((imagesRes.images || []) as ProductImageData[])
       setProductTitle((imagesRes.title as string) || null)
 
+      if (productRes) {
+        setProductResearch(productRes.research as ProductResearch)
+      }
+
       if (brandRes.cached) toast.info('Using cached brand research')
-      if (productRes.cached) toast.info('Using cached product research')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load data')
       setStep('url')
     } finally {
       setGenerating(false)
+      setResearchLoading(false)
       setProgress('')
     }
   }, [])
 
   // Generate creatives
   const handleGenerate = useCallback(async () => {
-    if (!brandResearch || !productResearch) return
+    if (!brandResearch) return
 
-    setStep('generating')
+    setStep('results')
     setGenerating(true)
 
     try {
@@ -116,42 +135,71 @@ export default function AdGenPage() {
         throw new Error('No ad ideas generated')
       }
 
-      // Step 2: Generate creatives for each idea × variation
-      const newCreatives: GeneratedCreative[] = []
-      let count = 0
+      // Step 2: Create placeholder cards for each creative, then fill them in
       const total = ideas.length * settings.variationsPerIdea
+      const placeholders: GeneratedCreative[] = []
 
       for (const idea of ideas) {
         for (let v = 0; v < settings.variationsPerIdea; v++) {
-          count++
-          setProgress(`Generating creative ${count}/${total}...`)
+          const placeholder: GeneratedCreative = {
+            id: `creative-${++creativeIdCounter}`,
+            imageBase64: '',
+            mimeType: '',
+            imagePrompt: '',
+            idea,
+            format: settings.format,
+            generatedAt: new Date().toISOString(),
+            _generating: true,
+          }
+          placeholders.push(placeholder)
+        }
+      }
 
+      // Show all placeholders at once
+      setCreatives((prev) => [...placeholders, ...prev])
+
+      // Generate each creative and replace placeholder
+      let count = 0
+      for (const placeholder of placeholders) {
+        count++
+        setProgress(`Generating creative ${count}/${total}...`)
+
+        try {
           const res = await safeFetch('/api/adgen/ad-creative', {
-            adIdea: idea,
+            adIdea: placeholder.idea,
             brandResearch,
             productResearch,
             images: imagePayload,
             format: settings.format,
           })
 
-          const creative: GeneratedCreative = {
-            id: `creative-${++creativeIdCounter}`,
-            imageBase64: res.imageBase64 as string,
-            mimeType: res.mimeType as string,
-            imagePrompt: res.imagePrompt as string,
-            idea,
-            format: settings.format,
-            generatedAt: new Date().toISOString(),
-          }
-          newCreatives.push(creative)
-          setCreatives((prev) => [creative, ...prev])
+          setCreatives((prev) =>
+            prev.map((c) =>
+              c.id === placeholder.id
+                ? {
+                    ...c,
+                    imageBase64: res.imageBase64 as string,
+                    mimeType: res.mimeType as string,
+                    imagePrompt: res.imagePrompt as string,
+                    _generating: false,
+                  }
+                : c
+            )
+          )
+        } catch (err) {
+          // Mark this placeholder as failed but continue with others
+          setCreatives((prev) =>
+            prev.map((c) =>
+              c.id === placeholder.id
+                ? { ...c, _generating: false, _failed: true }
+                : c
+            )
+          )
+          console.error(`Creative ${count} failed:`, err)
         }
       }
-
-      setStep('results')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Generation failed')
-      setStep('settings')
     } finally {
       setGenerating(false)
       setProgress('')
@@ -236,9 +284,15 @@ export default function AdGenPage() {
     toast.success('Saved to library')
   }, [url])
 
+  const handleRemoveProductImage = useCallback((src: string) => {
+    setProductImages((prev) => prev.filter((img) => img.src !== src))
+  }, [])
+
   const handleReset = useCallback(() => {
     setStep('url')
     setUrl('')
+    setUrlType('product')
+    setResearchLoading(false)
     setBrandResearch(null)
     setProductResearch(null)
     setProductImages([])
@@ -277,7 +331,7 @@ export default function AdGenPage() {
       {/* Steps */}
       {step === 'url' && <UrlStep onSubmit={handleUrlSubmit} />}
 
-      {step === 'settings' && !generating && (
+      {(step === 'settings' || step === 'results') && (
         <SettingsStep
           brandResearch={brandResearch}
           productResearch={productResearch}
@@ -289,19 +343,19 @@ export default function AdGenPage() {
           onSettings={setSettings}
           onGenerate={handleGenerate}
           onBack={() => setStep('url')}
+          onBrandResearchChange={setBrandResearch}
+          onProductResearchChange={setProductResearch}
+          onRemoveProductImage={handleRemoveProductImage}
+          urlType={urlType}
+          researchLoading={researchLoading}
         />
       )}
 
-      {generating && (
-        <div className="flex flex-col items-center justify-center gap-3 py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{progress}</p>
-        </div>
-      )}
-
-      {step === 'results' && !generating && (
+      {step === 'results' && (
         <ResultsPanel
           creatives={creatives}
+          generating={generating}
+          progress={progress}
           onVariation={handleVariation}
           onEdit={handleEdit}
           onChangeFormat={handleChangeFormat}

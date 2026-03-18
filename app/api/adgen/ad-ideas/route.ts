@@ -2,7 +2,7 @@ export const runtime = 'edge'
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { openAIChat } from '@/lib/openai'
+import { generateAISummary } from '@/lib/ai'
 
 // Shuffle array in-place (Fisher-Yates)
 function shuffle<T>(arr: T[]): T[] {
@@ -44,16 +44,18 @@ const HEURISTICS = [
 
 const AD_IDEAS_SYSTEM = `You are a world-class advertising strategist. Generate compelling ad concepts that leverage psychological triggers and proven advertising heuristics.
 
-Return a JSON array of exactly 6 ad concept objects with this structure:
-[{
-  "title": "Short concept name (3-5 words)",
-  "coreDesire": "one of the core desires",
-  "heuristic": "one of the heuristics",
-  "headline": "Punchy ad headline (max 30 chars)",
-  "messagingAngle": "1-2 sentences describing the core message and how it connects emotionally",
-  "visualConcept": "1-2 sentences describing the ideal visual/creative direction",
-  "adFormat": "feed_image | story | carousel | video_concept"
-}]
+Return ONLY a JSON object (no markdown, no code fences) with this structure:
+{"ideas": [
+  {
+    "title": "Short concept name (3-5 words)",
+    "coreDesire": "one of the core desires",
+    "heuristic": "one of the heuristics",
+    "headline": "Punchy ad headline (max 30 chars)",
+    "messagingAngle": "1-2 sentences describing the core message and how it connects emotionally",
+    "visualConcept": "1-2 sentences describing the ideal visual/creative direction",
+    "adFormat": "feed_image | story | carousel | video_concept"
+  }
+]}
 
 Make each concept genuinely different — vary the emotional angle, format, and audience segment.`
 
@@ -91,18 +93,18 @@ ${JSON.stringify(brandResearch, null, 2)}
 PRODUCT CONTEXT:
 ${JSON.stringify(productResearch, null, 2)}`
 
-    const raw = await openAIChat(AD_IDEAS_SYSTEM, userPrompt, {
-      model: 'gpt-4o',
-      maxTokens: 2500,
-      jsonMode: true,
-    })
+    const raw = await generateAISummary(AD_IDEAS_SYSTEM, userPrompt)
 
     let ideas: unknown[]
     try {
-      const parsed = JSON.parse(raw)
+      // Strip markdown code fences if present
+      const cleaned = raw.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim()
+      const match = cleaned.match(/\{[\s\S]*\}/) || cleaned.match(/\[[\s\S]*\]/)
+      const parsed = JSON.parse(match?.[0] ?? cleaned)
       // Handle both array and {ideas: [...]} shapes
       ideas = Array.isArray(parsed) ? parsed : (parsed.ideas ?? parsed.concepts ?? [])
     } catch {
+      console.error('Failed to parse ad ideas response:', raw.slice(0, 500))
       return NextResponse.json({ error: 'Failed to parse ad ideas' }, { status: 500 })
     }
 

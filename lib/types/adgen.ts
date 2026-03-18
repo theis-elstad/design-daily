@@ -36,6 +36,22 @@ export interface AdIdea {
   adFormat: string
 }
 
+// ─── URL types ───────────────────────────────────────────────────────────
+
+export type UrlType = 'product' | 'collection' | 'brand'
+
+export function detectUrlType(url: string): UrlType {
+  try {
+    const u = new URL(url.startsWith('http') ? url : `https://${url}`)
+    const path = u.pathname.toLowerCase()
+    if (path.match(/\/products\/[^/]+/)) return 'product'
+    if (path.match(/\/collections\/[^/]+/)) return 'collection'
+    return 'brand'
+  } catch {
+    return 'brand'
+  }
+}
+
 // ─── Image selection ──────────────────────────────────────────────────────
 
 export type ImageLabel = 'product-reference' | 'inspiration'
@@ -76,6 +92,8 @@ export interface GeneratedCreative {
   format: AdFormat
   generatedAt: string
   parentId?: string // set when created via variation/edit/format-change
+  _generating?: boolean // true while image is being generated
+  _failed?: boolean // true if generation failed for this creative
 }
 
 // ─── Page state ───────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Check, Upload, Link, X } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { Check, Upload, Link, X, ImagePlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,7 @@ interface ImageSelectorProps {
   productTitle: string | null
   selectedImages: SelectedImage[]
   onSelectedImages: (images: SelectedImage[]) => void
+  onRemoveProductImage?: (src: string) => void
 }
 
 const LABELS: { value: ImageLabel; label: string }[] = [
@@ -34,11 +35,70 @@ function genId() {
   return `img-${nextId++}-${Date.now()}`
 }
 
+function DropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
+  const [dragging, setDragging] = useState(false)
+  const dragCounter = useRef(0)
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current++
+    if (e.dataTransfer.types.includes('Files')) setDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current--
+    if (dragCounter.current === 0) setDragging(false)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setDragging(false)
+      dragCounter.current = 0
+      const files = Array.from(e.dataTransfer.files).filter((f) =>
+        f.type.startsWith('image/')
+      )
+      if (files.length > 0) onFiles(files)
+    },
+    [onFiles]
+  )
+
+  return (
+    <div
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className={cn(
+        'flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed py-6 transition-colors',
+        dragging
+          ? 'border-primary bg-primary/5'
+          : 'border-muted-foreground/20 hover:border-muted-foreground/40'
+      )}
+    >
+      <ImagePlus className={cn('h-6 w-6', dragging ? 'text-primary' : 'text-muted-foreground/40')} />
+      <p className="text-xs text-muted-foreground">
+        {dragging ? 'Drop images here' : 'Drag & drop images here'}
+      </p>
+    </div>
+  )
+}
+
 export function ImageSelector({
   productImages,
   productTitle,
   selectedImages,
   onSelectedImages,
+  onRemoveProductImage,
 }: ImageSelectorProps) {
   const [urlInput, setUrlInput] = useState('')
   const [showUrlInput, setShowUrlInput] = useState(false)
@@ -110,6 +170,10 @@ export function ImageSelector({
     }
   }
 
+  const handleMultipleFiles = useCallback((files: File[]) => {
+    files.forEach((f) => handleFileUpload(f))
+  }, [])
+
   const removeImage = (id: string) => {
     const img = selectedImages.find((s) => s.id === id)
     if (img?.source === 'upload') URL.revokeObjectURL(img.src)
@@ -140,31 +204,48 @@ export function ImageSelector({
             {productImages.map((img) => {
               const isSelected = selectedSrcs.has(img.src)
               return (
-                <button
-                  key={img.src}
-                  type="button"
-                  onClick={() => toggleProductImage(img)}
-                  className={cn(
-                    'relative aspect-square overflow-hidden rounded-lg border-2 transition-colors',
-                    isSelected
-                      ? 'border-primary'
-                      : 'border-transparent hover:border-border'
-                  )}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.src}
-                    alt={img.alt || 'Product image'}
-                    className="h-full w-full object-cover"
-                  />
-                  {isSelected && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-primary/10">
-                      <div className="rounded-full bg-primary p-1">
-                        <Check className="h-4 w-4 text-primary-foreground" />
+                <div key={img.src} className="group relative">
+                  <button
+                    type="button"
+                    onClick={() => toggleProductImage(img)}
+                    className={cn(
+                      'relative aspect-square w-full overflow-hidden rounded-lg border-2 transition-colors',
+                      isSelected
+                        ? 'border-primary'
+                        : 'border-transparent hover:border-border'
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.src}
+                      alt={img.alt || 'Product image'}
+                      className="h-full w-full object-cover"
+                    />
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-primary/10">
+                        <div className="rounded-full bg-primary p-1">
+                          <Check className="h-4 w-4 text-primary-foreground" />
+                        </div>
                       </div>
-                    </div>
+                    )}
+                  </button>
+                  {onRemoveProductImage && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // Also remove from selected if it was selected
+                        if (isSelected) {
+                          onSelectedImages(selectedImages.filter((s) => s.src !== img.src))
+                        }
+                        onRemoveProductImage(img.src)
+                      }}
+                      className="absolute -right-1.5 -top-1.5 z-10 hidden rounded-full bg-destructive p-0.5 text-destructive-foreground shadow-sm group-hover:flex hover:bg-destructive/90"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   )}
-                </button>
+                </div>
               )
             })}
           </div>
@@ -218,6 +299,9 @@ export function ImageSelector({
         </div>
       )}
 
+      {/* Drag and drop zone */}
+      <DropZone onFiles={handleMultipleFiles} />
+
       {/* Add image actions */}
       <div className="flex gap-2">
         <Button
@@ -226,7 +310,7 @@ export function ImageSelector({
           onClick={() => setShowUrlInput(!showUrlInput)}
         >
           <Link className="h-3.5 w-3.5 mr-1.5" />
-          Add URL
+          Add image from URL
         </Button>
         <Button
           variant="outline"
@@ -240,10 +324,13 @@ export function ImageSelector({
           ref={fileRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) handleFileUpload(file)
+            const files = e.target.files
+            if (files) {
+              Array.from(files).forEach((f) => handleFileUpload(f))
+            }
             e.target.value = ''
           }}
         />
