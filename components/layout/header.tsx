@@ -57,7 +57,7 @@ export function Header({ profile }: HeaderProps) {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/home" className="text-xl font-bold">
-              Design Daily
+              Designer Hub
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => {

@@ -1,4 +1,4 @@
-# Design Daily
+# Designer Hub
 
 Internal web application for design team daily reporting and performance tracking.
 
@@ -22,7 +22,7 @@ Internal web application for design team daily reporting and performance trackin
 
 ```bash
 git clone <repo-url>
-cd design-leaderboard
+cd designer-hub
 npm install
 ```
 

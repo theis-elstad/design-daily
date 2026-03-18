@@ -21,7 +21,7 @@ CREATE INDEX idx_apps_slug ON public.apps(slug) WHERE deleted_at IS NULL;
 
 INSERT INTO public.apps (name, slug, description, url, icon_url, status, display_order, open_in_new_tab) VALUES
     ('AdGen', 'adgen', 'Static ad creatives generator', 'https://adgen.metric-as.workers.dev/', NULL, 'active', 1, true),
-    ('Designer Daily', 'designer-daily', 'Daily submissions and leaderboard', '/submit', NULL, 'active', 2, false),
+    ('Designer Hub', 'designer-hub', 'Daily submissions and leaderboard', '/submit', NULL, 'active', 2, false),
     ('FashionKilla', 'fashionkilla', 'Fashion/apparel video generator', 'https://fashion-killa.metric-as.workers.dev/', NULL, 'active', 3, true),
     ('Batch Image Generator', 'batch-image-generator', 'Generates many images using product CSV file', 'https://product-prompt-composer.replit.app/', NULL, 'active', 4, true);
 

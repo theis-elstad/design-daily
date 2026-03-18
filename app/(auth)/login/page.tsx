@@ -32,7 +32,7 @@ export default function LoginPage() {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Design Daily</CardTitle>
+        <CardTitle className="text-2xl font-bold">Designer Hub</CardTitle>
         <CardDescription>
           Sign in to your account to submit your daily work
         </CardDescription>

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Design Daily",
+  title: "Designer Hub",
   description: "Design team daily reporting and performance tracking",
 };
 

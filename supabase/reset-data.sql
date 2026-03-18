@@ -1,4 +1,4 @@
--- Design Daily Database Reset
+-- Designer Hub Database Reset
 -- Run this in your Supabase SQL Editor to remove all test data and submissions
 -- WARNING: This will delete ALL submissions, assets, and ratings, plus test users
 

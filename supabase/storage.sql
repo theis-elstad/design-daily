@@ -1,4 +1,4 @@
--- Design Daily Storage Setup
+-- Designer Hub Storage Setup
 -- Run this SQL in your Supabase SQL Editor AFTER creating the storage bucket
 
 -- ============================================

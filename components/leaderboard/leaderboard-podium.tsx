@@ -268,7 +268,7 @@ export function LeaderboardPodium({ entries, isAdmin, currentRange, weekOffset =
       >
         {/* Banner */}
         <div className="px-4 sm:px-6 py-4 bg-gray-900 text-white">
-          <h2 className="text-lg font-bold">Design Daily Leaderboard</h2>
+          <h2 className="text-lg font-bold">Designer Hub Leaderboard</h2>
           <p className="text-sm text-gray-300">{getRangeLabel(currentRange, weekOffset)}</p>
         </div>
 

@@ -1,4 +1,4 @@
--- Design Daily Test Data
+-- Designer Hub Test Data
 -- Run this in your Supabase SQL Editor to populate test data for the leaderboard
 --
 -- This script creates test users in auth.users (which triggers profile creation)
