@@ -11,7 +11,7 @@ export async function getVisibleApps(): Promise<App[]> {
     .select('*')
     .is('deleted_at', null)
     .neq('status', 'hidden')
-    .neq('slug', 'designer-daily')
+    .neq('slug', 'designer-hub')
     .order('display_order', { ascending: true })
 
   if (error) {
